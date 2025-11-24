@@ -1,0 +1,19 @@
+# 賃金台帳 Generator v4 PRO - Requirements
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Excel Processing
+openpyxl>=3.1.2
+
+# PDF Generation
+reportlab>=4.0.0
+
+# Utilities
+python-multipart>=0.0.6
+jinja2>=3.1.2
+
+# Desktop App (opcional)
+# pywebview>=4.0.0
+# pyinstaller>=6.0.0
