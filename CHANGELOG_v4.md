@@ -284,5 +284,86 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8989
 
 ---
 
+## 🐳 Docker - Configuración
+
+### Nombres Únicos (evitar conflictos)
+
+| Recurso | Nombre |
+|---------|--------|
+| **Imagen** | `chingin-generator-v4-pro` |
+| **Contenedor** | `chingin-generator-app` |
+| **Proyecto** | `chingin` |
+| **Red** | `chingin-network-v4` |
+
+### Volúmenes
+
+| Volumen | Descripción |
+|---------|-------------|
+| `chingin_database_v4` | Base de datos SQLite |
+| `chingin_uploads_v4` | Archivos Excel subidos |
+| `chingin_outputs_v4` | Archivos generados |
+| `chingin_backups_v4` | Backups automáticos |
+
+### Archivos Docker
+
+```
+Dockerfile          # Definición de imagen
+docker-compose.yml  # Orquestación de servicios
+.dockerignore       # Archivos excluidos
+docker.sh           # Scripts para Linux/Mac
+docker.bat          # Scripts para Windows
+```
+
+### Comandos Rápidos
+
+```bash
+# Windows
+docker.bat build    # Construir imagen
+docker.bat up       # Iniciar
+docker.bat down     # Detener
+docker.bat logs     # Ver logs
+docker.bat status   # Ver estado
+docker.bat clean    # Limpiar todo
+
+# Linux/Mac
+./docker.sh build
+./docker.sh up
+./docker.sh down
+./docker.sh logs
+./docker.sh status
+./docker.sh clean
+```
+
+### Docker Compose Directo
+
+```bash
+# Iniciar
+docker-compose -p chingin up -d
+
+# Detener
+docker-compose -p chingin down
+
+# Ver logs
+docker logs -f chingin-generator-app
+
+# Rebuild
+docker-compose -p chingin up -d --build
+```
+
+### Verificar que no hay conflictos
+
+```bash
+# Ver todos los contenedores con "chingin"
+docker ps -a --filter "name=chingin"
+
+# Ver volúmenes
+docker volume ls --filter "name=chingin"
+
+# Ver redes
+docker network ls --filter "name=chingin"
+```
+
+---
+
 *Documentación generada el 25 de Noviembre, 2025*
 *ChinginGenerator v4 PRO - Sistema de Nóminas Japonesas*

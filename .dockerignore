@@ -1,0 +1,65 @@
+# ========================================
+# ChinginGenerator v4 PRO - .dockerignore
+# ========================================
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+.eggs
+dist
+build
+*.egg
+
+# Entornos virtuales
+venv
+env
+.venv
+.env
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Tests
+test_*.py
+pytest_cache
+.pytest_cache
+.coverage
+htmlcov
+
+# Archivos de desarrollo
+*.md
+!README.md
+*.bat
+*.html
+!templates/*.html
+
+# Archivos de base de datos locales (se usa volumen)
+*.db
+*.db-wal
+*.db-shm
+
+# Directorios que serán volúmenes
+uploads/*
+outputs/*
+backups/*
+!uploads/.gitkeep
+!outputs/.gitkeep
+!backups/.gitkeep
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

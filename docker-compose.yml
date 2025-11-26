@@ -1,0 +1,74 @@
+# ========================================
+# ChinginGenerator v4 PRO - Docker Compose
+# Sistema de Nóminas Japonesas 賃金台帳
+# ========================================
+# 
+# NOMBRES ÚNICOS para evitar conflictos:
+# - Imagen: chingin-generator-v4-pro
+# - Container: chingin-generator-app
+# - Volúmenes: chingin_* 
+# - Network: chingin-network
+# ========================================
+
+services:
+  # ================================
+  # Aplicación Principal
+  # ================================
+  chingin-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chingin-generator-v4-pro:latest
+    container_name: chingin-generator-app
+    restart: unless-stopped
+    ports:
+      - "8989:8989"
+    volumes:
+      # Base de datos SQLite (persistencia)
+      - chingin_database:/app/chingin_data.db
+      # Archivos subidos
+      - chingin_uploads:/app/uploads
+      # Archivos generados
+      - chingin_outputs:/app/outputs
+      # Backups
+      - chingin_backups:/app/backups
+    environment:
+      - TZ=Asia/Tokyo
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8989/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - chingin-network
+    labels:
+      - "app.name=chingin-generator"
+      - "app.version=4.0.0"
+      - "app.description=Sistema de Nóminas Japonesas"
+
+# ================================
+# Volúmenes Persistentes
+# ================================
+volumes:
+  chingin_database:
+    name: chingin_database_v4
+    driver: local
+  chingin_uploads:
+    name: chingin_uploads_v4
+    driver: local
+  chingin_outputs:
+    name: chingin_outputs_v4
+    driver: local
+  chingin_backups:
+    name: chingin_backups_v4
+    driver: local
+
+# ================================
+# Red
+# ================================
+networks:
+  chingin-network:
+    name: chingin-network-v4
+    driver: bridge
