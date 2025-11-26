@@ -592,7 +592,7 @@ class ExcelProcessor:
         Returns:
             dict con info del empleado y path del archivo generado
         """
-        from database import get_payroll_by_employee, get_all_employees
+        from database import get_payroll_by_employee, get_all_employees, get_employee_master
         
         if year is None:
             year = datetime.now().year
@@ -610,13 +610,19 @@ class ExcelProcessor:
             "name_roman": records[0].get('name_roman', ''),
         }
         
+        # Buscar datos del maestro de empleados (派遣社員/請負社員)
+        master_data = get_employee_master(employee_id)
+        
         # Buscar datos adicionales del empleado (派遣先, 性別, etc.) del primer registro
         # También podemos buscar en all_records si hay datos en memoria
         dispatch = ""
-        for rec in self.all_records:
-            if str(rec["row_data"][1]) == str(employee_id):
-                dispatch = rec["row_data"][5] if len(rec["row_data"]) > 5 else ""
-                break
+        if master_data:
+            dispatch = master_data.get('dispatch_company', '') or master_data.get('job_type', '')
+        else:
+            for rec in self.all_records:
+                if str(rec["row_data"][1]) == str(employee_id):
+                    dispatch = rec["row_data"][5] if len(rec["row_data"]) > 5 else ""
+                    break
         
         # Organizar por mes
         by_month = {}
@@ -665,9 +671,37 @@ class ExcelProcessor:
         )
         header_fill = PatternFill("solid", fgColor="E0E0E0")
         
+        # Obtener datos del empleado del maestro (入社日, 性別)
+        hire_date = ""
+        gender = ""
+        emp_name = emp_info.get('name_jp', '') or emp_info.get('name_roman', '')
+        
+        if master_data:
+            # Usar datos del maestro sincronizado
+            hire_date = master_data.get('hire_date', '') or ""
+            gender = master_data.get('gender', '') or ""
+            emp_name = master_data.get('name', '') or emp_name
+        else:
+            # Fallback: buscar en registros de nómina
+            for rec in self.all_records:
+                if str(rec["row_data"][1]) == str(employee_id):
+                    headers = rec.get("headers", [])
+                    row_data = rec["row_data"]
+                    # Buscar 入社日 y 性別 en headers
+                    for idx, h in enumerate(headers):
+                        if h and idx < len(row_data):
+                            h_str = str(h)
+                            if '入社' in h_str and not hire_date:
+                                hire_date = row_data[idx] if row_data[idx] else ""
+                            if '性別' in h_str and not gender:
+                                gender = row_data[idx] if row_data[idx] else ""
+                    break
+        
         # === ENCABEZADO ===
         ws['B1'] = "入社日"
-        ws['C1'] = ""  # Se podría agregar fecha de entrada
+        ws['C1'] = hire_date  # Fecha de entrada del empleado
+        if hire_date and hasattr(hire_date, 'strftime'):
+            ws['C1'] = hire_date.strftime("%Y/%m/%d")
         
         ws['B2'] = "従業員番号"
         ws['C2'] = "氏      名"
@@ -679,16 +713,17 @@ class ExcelProcessor:
         
         ws['B3'] = employee_id
         ws['B3'].font = Font(bold=True, size=12)
-        ws['C3'] = emp_info.get('name_jp', '') or emp_info.get('name_roman', '')
+        ws['C3'] = emp_name  # Nombre del empleado (del maestro o de nómina)
         ws['C3'].font = Font(bold=True, size=12)
+        ws['G3'] = gender  # Sexo del empleado
         
         ws['B4'] = "派遣先＜＞所属先"
         ws['C4'] = dispatch
         
-        # === MESES (Fila 6) ===
+        # === MESES (Fila 6) - Formato "1月分", "2月分", etc. ===
         for month in range(1, 13):
             col = month + 2  # C=1, D=2, ... N=12
-            cell = ws.cell(row=6, column=col, value=month)
+            cell = ws.cell(row=6, column=col, value=f"{month}月分")
             cell.alignment = Alignment(horizontal="center")
             cell.font = header_font
         ws.cell(row=6, column=15, value="合  計")
@@ -866,9 +901,13 @@ class ExcelProcessor:
                                 value = f"{int(hours)}:{int(mins):02d}"
                                 has_data = True
                         else:
-                            hours = rec.get(field, 0) or 0
-                            if hours:
-                                value = f"{int(hours)}:00"
+                            # Convertir horas decimales a H:MM
+                            # Ej: 153.4 = 153 horas + 0.4*60 = 24 minutos = 153:24
+                            decimal_hours = rec.get(field, 0) or 0
+                            if decimal_hours:
+                                total_hours = int(decimal_hours)
+                                total_mins = int(round((decimal_hours - total_hours) * 60))
+                                value = f"{total_hours}:{total_mins:02d}"
                                 has_data = True
                     
                     # CAMPO ESPECIAL: その他手当１ = SUMA de columnas X(1) a AE(8)
@@ -989,9 +1028,23 @@ class ExcelProcessor:
     
     def search_employee(self, employee_id: str) -> dict:
         """Buscar empleado y retornar su información"""
-        from database import get_payroll_by_employee
+        from database import get_payroll_by_employee, get_employee_master
         
         records = get_payroll_by_employee(employee_id)
+        
+        # Buscar datos maestros del empleado
+        master_data = get_employee_master(employee_id)
+        name_jp = ""
+        name_roman = ""
+        dispatch = ""
+        
+        if master_data:
+            # name es el nombre romano, name_kana es el nombre en katakana
+            name_roman = master_data.get('name', '') or ""
+            name_kana = master_data.get('name_kana', '') or ""
+            # Mostrar ambos nombres: romano y kana
+            name_jp = name_kana if name_kana else name_roman
+            dispatch = master_data.get('dispatch_company', '') or master_data.get('job_type', '') or ""
         
         if not records:
             # Buscar en all_records
@@ -1000,11 +1053,24 @@ class ExcelProcessor:
                     return {
                         "found": True,
                         "employee_id": employee_id,
-                        "name_jp": rec["row_data"][3] if len(rec["row_data"]) > 3 else "",
-                        "name_roman": rec["row_data"][2] if len(rec["row_data"]) > 2 else "",
-                        "dispatch": rec["row_data"][5] if len(rec["row_data"]) > 5 else "",
+                        "name_jp": name_jp or (rec["row_data"][3] if len(rec["row_data"]) > 3 else ""),
+                        "name_roman": name_roman or (rec["row_data"][2] if len(rec["row_data"]) > 2 else ""),
+                        "dispatch": dispatch or (rec["row_data"][5] if len(rec["row_data"]) > 5 else ""),
                         "records": 1
                     }
+            
+            # Si hay datos maestros pero no registros
+            if master_data:
+                return {
+                    "found": True,
+                    "employee_id": employee_id,
+                    "name_jp": name_jp,
+                    "name_roman": name_roman,
+                    "dispatch": dispatch,
+                    "records": 0,
+                    "periods": []
+                }
+            
             return {"found": False, "employee_id": employee_id}
         
         # Contar periodos únicos
@@ -1016,9 +1082,9 @@ class ExcelProcessor:
         return {
             "found": True,
             "employee_id": employee_id,
-            "name_jp": records[0].get('name_jp', ''),
-            "name_roman": records[0].get('name_roman', ''),
-            "dispatch": "",
+            "name_jp": name_jp or records[0].get('name_jp', ''),
+            "name_roman": name_roman or records[0].get('name_roman', ''),
+            "dispatch": dispatch,
             "records": len(records),
             "periods": list(periods)
         }

@@ -22,7 +22,11 @@ from database import (
     create_backup, get_backups, verify_backup_integrity,
     restore_from_backup, get_all_settings, set_setting,
     get_all_employees, get_all_payroll_records, get_periods,
-    clear_all_data
+    clear_all_data, sync_all_employees, sync_haken_employees,
+    sync_ukeoi_employees, get_employee_master, get_employee_master_stats,
+    get_all_haken_employees, get_all_ukeoi_employees,
+    get_dispatch_companies, get_ukeoi_job_types,
+    get_employees_by_company, get_employees_by_job_type
 )
 
 # Configuración
@@ -177,6 +181,147 @@ async def generate_employee_chingin(employee_id: str, year: int = None):
         return FileResponse(result["output_path"], filename=filename)
     
     return JSONResponse(result)
+
+
+@app.get("/api/chingin/by-company/{company_name}")
+async def generate_chingin_by_company(company_name: str, year: int = None):
+    """Generar 賃金台帳 para todos los empleados de una fábrica (ZIP)"""
+    import zipfile
+    import io
+    from urllib.parse import unquote
+    
+    if year is None:
+        year = datetime.now().year
+    
+    company = unquote(company_name)
+    employees = get_employees_by_company(company)
+    
+    if not employees.get('employees'):
+        raise HTTPException(status_code=404, detail=f"No hay empleados en {company}")
+    
+    # Crear ZIP en memoria
+    zip_buffer = io.BytesIO()
+    generated_count = 0
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for emp in employees['employees']:
+            emp_id = emp['id']
+            try:
+                result = processor.generate_chingin_print(emp_id, year)
+                if result.get("output_path") and os.path.exists(result["output_path"]):
+                    # Leer el archivo y agregarlo al ZIP
+                    with open(result["output_path"], 'rb') as f:
+                        filename = f"賃金台帳_{emp_id}_{emp['name']}_{year}.xlsx"
+                        zip_file.writestr(filename, f.read())
+                        generated_count += 1
+            except Exception as e:
+                print(f"Error generando para {emp_id}: {e}")
+                continue
+    
+    if generated_count == 0:
+        raise HTTPException(status_code=404, detail=f"No se pudieron generar archivos para {company}")
+    
+    zip_buffer.seek(0)
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=賃金台帳_{company}_{year}.zip"}
+    )
+
+
+@app.get("/api/chingin/by-job-type/{job_type}")
+async def generate_chingin_by_job_type(job_type: str, year: int = None):
+    """Generar 賃金台帳 para todos los empleados de un tipo de trabajo (ZIP)"""
+    import zipfile
+    import io
+    from urllib.parse import unquote
+    
+    if year is None:
+        year = datetime.now().year
+    
+    jt = unquote(job_type)
+    employees = get_employees_by_job_type(jt)
+    
+    if not employees.get('employees'):
+        raise HTTPException(status_code=404, detail=f"No hay empleados en {jt}")
+    
+    # Crear ZIP en memoria
+    zip_buffer = io.BytesIO()
+    generated_count = 0
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for emp in employees['employees']:
+            emp_id = emp['id']
+            try:
+                result = processor.generate_chingin_print(emp_id, year)
+                if result.get("output_path") and os.path.exists(result["output_path"]):
+                    # Leer el archivo y agregarlo al ZIP
+                    with open(result["output_path"], 'rb') as f:
+                        filename = f"賃金台帳_{emp_id}_{emp['name']}_{year}.xlsx"
+                        zip_file.writestr(filename, f.read())
+                        generated_count += 1
+            except Exception as e:
+                print(f"Error generando para {emp_id}: {e}")
+                continue
+    
+    if generated_count == 0:
+        raise HTTPException(status_code=404, detail=f"No se pudieron generar archivos para {jt}")
+    
+    zip_buffer.seek(0)
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=賃金台帳_{jt}_{year}.zip"}
+    )
+
+
+@app.get("/api/chingin/all-ukeoi")
+async def generate_chingin_all_ukeoi(year: int = None):
+    """Generar 賃金台帳 para todos los 請負社員 (岡山工場) en ZIP"""
+    import zipfile
+    import io
+    
+    if year is None:
+        year = datetime.now().year
+    
+    # Obtener todos los 請負社員
+    ukeoi_data = get_all_ukeoi_employees()
+    employees = ukeoi_data.get('employees', [])
+    
+    if not employees:
+        raise HTTPException(status_code=404, detail="No hay 請負社員 registrados")
+    
+    # Crear ZIP en memoria
+    zip_buffer = io.BytesIO()
+    generated_count = 0
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for emp in employees:
+            emp_id = emp.get('employee_id')
+            emp_name = emp.get('name', '')
+            try:
+                result = processor.generate_chingin_print(emp_id, year)
+                if result.get("output_path") and os.path.exists(result["output_path"]):
+                    with open(result["output_path"], 'rb') as f:
+                        filename = f"賃金台帳_{emp_id}_{emp_name}_{year}.xlsx"
+                        zip_file.writestr(filename, f.read())
+                        generated_count += 1
+            except Exception as e:
+                print(f"Error generando para {emp_id}: {e}")
+                continue
+    
+    if generated_count == 0:
+        raise HTTPException(status_code=404, detail="No se pudieron generar archivos para 請負社員")
+    
+    zip_buffer.seek(0)
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=賃金台帳_請負社員_岡山工場_{year}.zip"}
+    )
 
 
 @app.get("/api/employee/{employee_id}/preview")
@@ -405,6 +550,95 @@ async def health_check():
         "employees": stats['total_employees'],
         "records": stats['total_payroll_records']
     })
+
+
+# ========================================
+# API - SINCRONIZACIÓN DE EMPLEADOS
+# ========================================
+
+@app.post("/api/sync-employees")
+async def sync_employees():
+    """Sincronizar empleados desde Excel maestro"""
+    try:
+        result = sync_all_employees()
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+
+@app.post("/api/sync-haken")
+async def sync_haken():
+    """Sincronizar solo empleados 派遣社員"""
+    try:
+        result = sync_haken_employees()
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+
+@app.post("/api/sync-ukeoi")
+async def sync_ukeoi():
+    """Sincronizar solo empleados 請負社員"""
+    try:
+        result = sync_ukeoi_employees()
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+
+@app.get("/api/employee-master/{employee_id}")
+async def get_employee_master_api(employee_id: str):
+    """Obtener datos de empleado del maestro"""
+    emp = get_employee_master(employee_id)
+    if emp:
+        return JSONResponse(emp)
+    return JSONResponse({"error": "Empleado no encontrado"}, status_code=404)
+
+
+@app.get("/api/employee-master-stats")
+async def get_employee_stats():
+    """Obtener estadísticas de empleados maestro"""
+    return JSONResponse(get_employee_master_stats())
+
+
+@app.get("/api/haken-employees")
+async def get_haken_list():
+    """Listar todos los empleados 派遣"""
+    return JSONResponse(get_all_haken_employees())
+
+
+@app.get("/api/ukeoi-employees")
+async def get_ukeoi_list():
+    """Listar todos los empleados 請負"""
+    return JSONResponse(get_all_ukeoi_employees())
+
+
+@app.get("/api/dispatch-companies")
+async def get_companies():
+    """Listar派遣先 (fábricas) únicas"""
+    return JSONResponse(get_dispatch_companies())
+
+
+@app.get("/api/job-types")
+async def get_job_types():
+    """Listar 請負業務 (tipos de trabajo) únicos"""
+    return JSONResponse(get_ukeoi_job_types())
+
+
+@app.get("/api/employees-by-company/{company_name}")
+async def get_company_employees(company_name: str):
+    """Listar empleados de una fábrica específica"""
+    from urllib.parse import unquote
+    company = unquote(company_name)
+    return JSONResponse(get_employees_by_company(company))
+
+
+@app.get("/api/employees-by-job-type/{job_type}")
+async def get_job_type_employees(job_type: str):
+    """Listar empleados de un tipo de trabajo específico"""
+    from urllib.parse import unquote
+    jt = unquote(job_type)
+    return JSONResponse(get_employees_by_job_type(jt))
 
 
 # Inicializar BD al arrancar

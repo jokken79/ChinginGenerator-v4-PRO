@@ -44,8 +44,8 @@ COPY templates/ templates/
 COPY static/ static/
 
 # Crear directorios necesarios con permisos
-RUN mkdir -p uploads outputs backups && \
-    chmod 755 uploads outputs backups
+RUN mkdir -p data uploads outputs backups && \
+    chmod 755 data uploads outputs backups
 
 # Crear usuario no-root para seguridad
 RUN useradd --create-home --shell /bin/bash chingin && \

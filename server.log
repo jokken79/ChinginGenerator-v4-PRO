@@ -1,0 +1,34 @@
+D:\ChinginGenerator-v4-PRO\app.py:649: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [12060]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8989 (Press CTRL+C to quit)
+✓ Base de datos inicializada correctamente
+✓ Base de datos inicializada correctamente
+✓ Base de datos inicializada
+✓ ChinginApp v4 PRO listo!
+[DEBUG] DB_PATH: D:\ChinginGenerator-v4-PRO\chingin_data.db
+[DEBUG] get_all_ukeoi_employees returned: type=<class 'dict'>, len=135
+INFO:     127.0.0.1:54870 - "GET /api/ukeoi-employees HTTP/1.1" 200 OK
+[DEBUG] DB_PATH: D:\ChinginGenerator-v4-PRO\chingin_data.db
+[DEBUG] get_all_ukeoi_employees returned: type=<class 'dict'>, len=135
+INFO:     127.0.0.1:54878 - "GET /api/ukeoi-employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54892 - "GET /api/haken-employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58903 - "GET /api/dispatch-companies HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58908 - "GET /?id=ab0cc6e6-c5e6-4555-94ba-da9535de6d85&vscodeBrowserReqId=1764140664400 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58908 - "GET /api/employee-master-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58908 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58908 - "GET /api/dispatch-companies HTTP/1.1" 200 OK
+[DEBUG] DB_PATH: D:\ChinginGenerator-v4-PRO\chingin_data.db
+[DEBUG] get_all_ukeoi_employees returned: type=<class 'dict'>, len=135
+INFO:     127.0.0.1:58908 - "GET /api/ukeoi-employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "GET /api/employees-by-company/PATEC HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "GET /api/employee/211109 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "GET /api/employee/211109/preview?year=2025 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "GET /api/employee/211109/preview?year=2025 HTTP/1.1" 200 OK

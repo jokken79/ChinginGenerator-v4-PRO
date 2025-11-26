@@ -24,8 +24,8 @@ services:
     ports:
       - "8989:8989"
     volumes:
-      # Base de datos SQLite (persistencia)
-      - chingin_database:/app/chingin_data.db
+      # Directorio de datos (contiene la BD SQLite)
+      - chingin_data:/app/data
       # Archivos subidos
       - chingin_uploads:/app/uploads
       # Archivos generados
@@ -52,8 +52,8 @@ services:
 # Volúmenes Persistentes
 # ================================
 volumes:
-  chingin_database:
-    name: chingin_database_v4
+  chingin_data:
+    name: chingin_data_v4
     driver: local
   chingin_uploads:
     name: chingin_uploads_v4
