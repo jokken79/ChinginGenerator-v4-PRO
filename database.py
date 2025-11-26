@@ -24,8 +24,11 @@ def get_db_path():
 @contextmanager
 def get_connection():
     """Context manager para conexiones a la base de datos"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # Habilitar WAL mode para mejor concurrencia
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
     try:
         yield conn
         conn.commit()
@@ -240,13 +243,21 @@ def save_payroll_record(record: Dict) -> int:
     with get_connection() as conn:
         cursor = conn.cursor()
         
-        # Primero asegurar que el empleado existe
-        upsert_employee({
-            'employee_id': record.get('employee_id'),
-            'name_roman': record.get('name_roman'),
-            'name_jp': record.get('name_jp'),
-            'hourly_rate': record.get('hourly_rate')
-        })
+        # Primero asegurar que el empleado existe (inline para evitar bloqueo)
+        cursor.execute("""
+            INSERT INTO employees (employee_id, name_roman, name_jp, hourly_rate)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(employee_id) DO UPDATE SET
+                name_roman = COALESCE(excluded.name_roman, employees.name_roman),
+                name_jp = COALESCE(excluded.name_jp, employees.name_jp),
+                hourly_rate = COALESCE(excluded.hourly_rate, employees.hourly_rate),
+                updated_at = CURRENT_TIMESTAMP
+        """, (
+            record.get('employee_id'),
+            record.get('name_roman'),
+            record.get('name_jp'),
+            record.get('hourly_rate')
+        ))
         
         cursor.execute("""
             INSERT INTO payroll_records (
@@ -304,9 +315,12 @@ def save_payroll_record(record: Dict) -> int:
             json.dumps(record, ensure_ascii=False, default=str)
         ))
         
-        # Log de auditoría
-        log_audit('INSERT_PAYROLL', 'payroll_records', record.get('employee_id'), 
-                  None, json.dumps(record, ensure_ascii=False, default=str))
+        # Log de auditoría (inline para evitar bloqueo)
+        cursor.execute("""
+            INSERT INTO audit_log (action, table_name, record_id, old_value, new_value, details)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, ('INSERT_PAYROLL', 'payroll_records', record.get('employee_id'), 
+              None, json.dumps(record, ensure_ascii=False, default=str), None))
         
         return cursor.lastrowid
 
@@ -391,6 +405,36 @@ def get_audit_log(limit: int = 100, action_filter: str = None) -> List[Dict]:
             """, (limit,))
         
         return [dict(row) for row in cursor.fetchall()]
+
+
+def clear_all_data():
+    """Borrar TODOS los datos de la base de datos (excepto backups y configuración)"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Contar registros antes de borrar
+        cursor.execute("SELECT COUNT(*) FROM payroll_records")
+        payroll_count = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM employees")
+        employee_count = cursor.fetchone()[0]
+        
+        # Borrar datos
+        cursor.execute("DELETE FROM payroll_records")
+        cursor.execute("DELETE FROM employees")
+        cursor.execute("DELETE FROM processed_files")
+        
+        # Registrar en auditoría
+        cursor.execute("""
+            INSERT INTO audit_log (action, table_name, details)
+            VALUES (?, ?, ?)
+        """, ('CLEAR_ALL_DATA', 'all', f'Borrados {payroll_count} registros de nómina y {employee_count} empleados'))
+        
+        return {
+            "payroll_deleted": payroll_count,
+            "employees_deleted": employee_count,
+            "status": "success"
+        }
 
 
 # ========================================

@@ -57,6 +57,9 @@
                 <button onclick="showTab('settings')" id="tab-settings" class="py-3 px-2 text-gray-600 hover:text-gray-800 font-medium">
                     ⚙️ Config
                 </button>
+                <button onclick="showTab('chingin')" id="tab-chingin" class="py-3 px-2 text-gray-600 hover:text-gray-800 font-medium">
+                    📄 賃金台帳
+                </button>
             </div>
         </div>
     </nav>
@@ -65,7 +68,12 @@
         <!-- Tab: Upload -->
         <section id="section-upload" class="tab-content">
             <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h2 class="text-lg font-semibold mb-4">📁 Subir Archivos 勤怠表</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">📁 Subir Archivos 勤怠表</h2>
+                    <button onclick="clearAllData()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">
+                        🗑️ Borrar Todos los Datos
+                    </button>
+                </div>
                 
                 <div id="dropZone" class="drop-zone rounded-xl p-10 text-center cursor-pointer hover:bg-gray-50">
                     <div class="flex flex-col items-center gap-3">
@@ -77,6 +85,25 @@
                         <p class="text-xs text-gray-400 mt-2">Formatos: .xlsm, .xlsx, .xls</p>
                     </div>
                     <input type="file" id="fileInput" multiple accept=".xlsm,.xlsx,.xls" class="hidden">
+                </div>
+
+                <!-- Barra de Progreso Detallada -->
+                <div id="progressSection" class="mt-4 hidden">
+                    <div class="bg-gray-100 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-gray-700" id="progressTitle">Procesando...</span>
+                            <span class="text-sm text-gray-500" id="progressPercent">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                            <div id="progressBar" class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-500" id="progressDetails">
+                            <!-- Detalles del progreso -->
+                        </div>
+                        <div id="progressLog" class="mt-3 max-h-40 overflow-y-auto text-xs font-mono bg-gray-800 text-green-400 rounded p-2 hidden">
+                            <!-- Log de procesamiento -->
+                        </div>
+                    </div>
                 </div>
 
                 <div id="fileList" class="mt-4 space-y-2 hidden">
@@ -111,9 +138,14 @@
             <div class="bg-white rounded-xl shadow-sm p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold">📊 Datos de Nómina</h2>
-                    <button onclick="loadData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-                        🔄 Actualizar
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="clearAllData()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">
+                            🗑️ Borrar Todo
+                        </button>
+                        <button onclick="loadData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                            🔄 Actualizar
+                        </button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -231,6 +263,123 @@
                 <div id="settingsList" class="space-y-4"></div>
             </div>
         </section>
+
+        <!-- Tab: Chingin (賃金台帳 por empleado) -->
+        <section id="section-chingin" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4">📄 賃金台帳 - Generar por Empleado</h2>
+                <p class="text-sm text-gray-500 mb-6">
+                    Ingresa el ID del empleado (従業員番号) para generar su 賃金台帳 en formato oficial
+                </p>
+                
+                <div class="flex gap-4 items-end">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">従業員番号 (ID)</label>
+                        <input type="text" id="employeeIdInput" placeholder="Ej: 504010" 
+                               class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               onkeypress="if(event.key==='Enter') searchEmployee()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">年度</label>
+                        <select id="yearSelect" class="border rounded-lg px-4 py-2">
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                        </select>
+                    </div>
+                    <button onclick="searchEmployee()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        🔍 検索 Buscar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Resultado de búsqueda -->
+            <div id="employeeResult" class="hidden">
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold" id="empName">-</h3>
+                            <p class="text-gray-500" id="empId">-</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">派遣先</p>
+                            <p class="font-medium" id="empDispatch">-</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-500">登録数</p>
+                            <p class="text-2xl font-bold text-blue-600" id="empRecords">0</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-500">対象期間</p>
+                            <p class="text-lg font-semibold text-green-600" id="empPeriods">-</p>
+                        </div>
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-500">氏名ローマ字</p>
+                            <p class="text-lg font-semibold text-purple-600" id="empRoman">-</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button onclick="generateChingin()" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold">
+                            📥 賃金台帳をダウンロード
+                        </button>
+                        <button onclick="previewChingin()" class="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 font-semibold">
+                            👁️ プレビュー Preview
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Vista previa de datos -->
+                <div id="previewSection" class="hidden">
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold mb-4">📊 Vista Previa de Datos</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">月</th>
+                                        <th class="px-3 py-2 text-center">出勤日数</th>
+                                        <th class="px-3 py-2 text-center">実働時間</th>
+                                        <th class="px-3 py-2 text-center">残業時間</th>
+                                        <th class="px-3 py-2 text-right">基本給</th>
+                                        <th class="px-3 py-2 text-right">残業手当</th>
+                                        <th class="px-3 py-2 text-right">総支給額</th>
+                                        <th class="px-3 py-2 text-right">控除合計</th>
+                                        <th class="px-3 py-2 text-right font-bold">差引支給額</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewTable"></tbody>
+                                <tfoot class="bg-gray-50 font-bold">
+                                    <tr>
+                                        <td class="px-3 py-2">合計</td>
+                                        <td class="px-3 py-2 text-center" id="totalWorkDays">-</td>
+                                        <td class="px-3 py-2 text-center" id="totalWorkHours">-</td>
+                                        <td class="px-3 py-2 text-center" id="totalOvertimeHours">-</td>
+                                        <td class="px-3 py-2 text-right" id="totalBasePay">-</td>
+                                        <td class="px-3 py-2 text-right" id="totalOvertimePay">-</td>
+                                        <td class="px-3 py-2 text-right" id="totalPay">-</td>
+                                        <td class="px-3 py-2 text-right" id="totalDeduction">-</td>
+                                        <td class="px-3 py-2 text-right text-green-600" id="totalNetPay">-</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No encontrado -->
+            <div id="employeeNotFound" class="hidden">
+                <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                    <span class="text-4xl">😕</span>
+                    <p class="text-red-700 font-medium mt-2">従業員が見つかりません</p>
+                    <p class="text-red-500 text-sm">El empleado no fue encontrado en la base de datos</p>
+                </div>
+            </div>
+        </section>
     </main>
 
     <script>
@@ -262,26 +411,247 @@
         fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
         async function handleFiles(files) {
-            const formData = new FormData();
-            for (let file of files) {
-                formData.append('files', file);
+            if (!files || files.length === 0) {
+                alert('Por favor selecciona al menos un archivo');
+                return;
             }
             
-            const response = await fetch('/api/upload', { method: 'POST', body: formData });
-            const data = await response.json();
+            const totalFiles = files.length;
+            const progressSection = document.getElementById('progressSection');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressTitle = document.getElementById('progressTitle');
+            const progressDetails = document.getElementById('progressDetails');
+            const progressLog = document.getElementById('progressLog');
             
-            document.getElementById('fileList').classList.remove('hidden');
-            const fileItems = document.getElementById('fileItems');
-            fileItems.innerHTML = data.results.map(r => `
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <span>${r.filename}</span>
-                    <span class="${r.status === 'success' ? 'text-green-600' : 'text-red-600'}">
-                        ${r.status === 'success' ? '✓ ' + r.records + ' registros' : '✗ Error'}
-                    </span>
-                </div>
-            `).join('');
+            // Resetear estado de la barra de progreso
+            progressBar.style.width = '0%';
+            progressBar.classList.remove('bg-green-600', 'bg-red-600');
+            progressBar.classList.add('bg-blue-600');
+            progressPercent.textContent = '0%';
+            progressTitle.textContent = '🚀 Iniciando...';
+            progressDetails.textContent = '';
             
-            loadStats();
+            // Mostrar sección de progreso
+            progressSection.classList.remove('hidden');
+            progressLog.classList.remove('hidden');
+            progressLog.innerHTML = '';
+            
+            // Ocultar dropzone temporalmente
+            dropZone.style.display = 'none';
+            
+            const formData = new FormData();
+            let totalSize = 0;
+            for (let file of files) {
+                formData.append('files', file);
+                totalSize += file.size;
+            }
+            
+            // Función para actualizar progreso
+            const updateProgress = (percent, title, detail) => {
+                progressBar.style.width = percent + '%';
+                progressPercent.textContent = percent + '%';
+                if (title) progressTitle.textContent = title;
+                if (detail) progressDetails.textContent = detail;
+            };
+            
+            // Logs
+            const addLog = (msg, type = 'info') => {
+                const colors = { info: 'text-blue-400', success: 'text-green-400', error: 'text-red-400', warning: 'text-yellow-400' };
+                const time = new Date().toLocaleTimeString();
+                progressLog.innerHTML += `<div class="${colors[type]}">[${time}] ${msg}</div>`;
+                progressLog.scrollTop = progressLog.scrollHeight;
+            };
+            
+            // Fase 0: Inicio inmediato
+            updateProgress(2, '🚀 Iniciando...', `${totalFiles} archivo(s) | ${(totalSize / 1024).toFixed(1)} KB`);
+            addLog(`🚀 Iniciando procesamiento de ${totalFiles} archivo(s)...`);
+            addLog(`📦 Tamaño total: ${(totalSize / 1024).toFixed(1)} KB`);
+            
+            // Pequeña pausa para que se vea el inicio
+            await new Promise(r => setTimeout(r, 300));
+            
+            // Fase 1: Preparando envío
+            updateProgress(5, '📤 Preparando envío...', `Empaquetando ${totalFiles} archivo(s)...`);
+            addLog('📤 Preparando archivos para enviar...');
+            
+            // Simulador de progreso durante la subida
+            let currentProgress = 5;
+            let progressInterval = null;
+            let uploadComplete = false;
+            
+            // Calcular velocidad de progreso basado en tamaño
+            const estimatedTime = Math.max(3000, totalSize / 30); // mínimo 3 segundos
+            const tickInterval = 150; // cada 150ms
+            const totalTicks = estimatedTime / tickInterval;
+            const incrementPerTick = (80 - 5) / totalTicks;
+            
+            progressInterval = setInterval(() => {
+                if (uploadComplete) {
+                    clearInterval(progressInterval);
+                    return;
+                }
+                
+                // Incrementar progreso de forma suave
+                const remaining = 80 - currentProgress;
+                const increment = Math.max(0.3, Math.min(incrementPerTick, remaining * 0.08));
+                currentProgress = Math.min(80, currentProgress + increment);
+                
+                const percent = Math.round(currentProgress);
+                progressBar.style.width = percent + '%';
+                progressPercent.textContent = percent + '%';
+                
+                // Cambiar mensajes según el progreso
+                if (percent <= 15) {
+                    progressTitle.textContent = '📤 Enviando archivos...';
+                    progressDetails.textContent = `Subiendo ${totalFiles} archivo(s) al servidor...`;
+                } else if (percent <= 30) {
+                    progressTitle.textContent = '📂 Archivos recibidos...';
+                    progressDetails.textContent = `Servidor procesando archivos Excel...`;
+                } else if (percent <= 45) {
+                    progressTitle.textContent = '⚙️ Leyendo hojas Excel...';
+                    progressDetails.textContent = `Extrayendo datos de nóminas...`;
+                } else if (percent <= 60) {
+                    progressTitle.textContent = '📊 Procesando registros...';
+                    progressDetails.textContent = `Analizando información de empleados...`;
+                } else if (percent <= 72) {
+                    progressTitle.textContent = '💾 Guardando en base de datos...';
+                    progressDetails.textContent = `Almacenando registros...`;
+                } else {
+                    progressTitle.textContent = '🔄 Finalizando...';
+                    progressDetails.textContent = `Verificando integridad de datos...`;
+                }
+                
+            }, tickInterval);
+            
+            try {
+                const response = await fetch('/api/upload', { method: 'POST', body: formData });
+                
+                uploadComplete = true;
+                clearInterval(progressInterval);
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                // Fase: Recibiendo respuesta
+                updateProgress(88, '📥 Procesando respuesta...', 'Analizando resultados...');
+                addLog('📥 Respuesta recibida del servidor');
+                
+                const data = await response.json();
+                
+                // Fase: Mostrando resultados archivo por archivo
+                let successCount = 0;
+                let errorCount = 0;
+                let totalRecords = 0;
+                
+                for (let idx = 0; idx < data.results.length; idx++) {
+                    const r = data.results[idx];
+                    const fileNum = idx + 1;
+                    const fileProgress = 88 + Math.round((idx + 1) / data.results.length * 10);
+                    
+                    updateProgress(fileProgress, '📊 Procesando resultados...', `Archivo ${fileNum} de ${totalFiles}`);
+                    
+                    // Pequeña pausa para efecto visual
+                    await new Promise(resolve => setTimeout(resolve, 150));
+                    
+                    if (r.status === 'success') {
+                        addLog(`✅ [${fileNum}/${totalFiles}] ${r.filename}: ${r.records} registros procesados`, 'success');
+                        successCount++;
+                        totalRecords += r.records || 0;
+                    } else {
+                        addLog(`❌ [${fileNum}/${totalFiles}] ${r.filename}: ${r.message || 'Error desconocido'}`, 'error');
+                        errorCount++;
+                    }
+                }
+                
+                // Fase final: Completado
+                updateProgress(100, '✅ Procesamiento completado', '');
+                progressDetails.innerHTML = `
+                    <span class="text-green-600 font-medium">${successCount} exitosos</span> | 
+                    <span class="text-red-600 font-medium">${errorCount} errores</span> | 
+                    <span class="text-blue-600 font-medium">${totalRecords} registros totales</span>
+                `;
+                progressBar.classList.remove('bg-blue-600');
+                progressBar.classList.add('bg-green-600');
+                
+                addLog(`🎉 ¡Completado! ${successCount} archivos, ${totalRecords} registros guardados`, 'success');
+                
+                // Mostrar lista de archivos
+                document.getElementById('fileList').classList.remove('hidden');
+                const fileItems = document.getElementById('fileItems');
+                fileItems.innerHTML = data.results.map(r => `
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <span>${r.filename}</span>
+                        <span class="${r.status === 'success' ? 'text-green-600' : 'text-red-600'}">
+                            ${r.status === 'success' ? '✓ ' + r.records + ' registros' : '✗ ' + (r.message || 'Error')}
+                        </span>
+                    </div>
+                `).join('');
+                
+                loadStats();
+                
+            } catch (error) {
+                uploadComplete = true;
+                clearInterval(progressInterval);
+                
+                console.error('Error:', error);
+                addLog(`💥 Error: ${error.message}`, 'error');
+                progressBar.classList.remove('bg-blue-600');
+                progressBar.classList.add('bg-red-600');
+                progressTitle.textContent = '❌ Error en el procesamiento';
+                progressPercent.textContent = 'Error';
+            } finally {
+                // Restaurar dropzone después de 2 segundos
+                setTimeout(() => {
+                    dropZone.style.display = 'block';
+                    progressBar.classList.remove('bg-green-600', 'bg-red-600');
+                    progressBar.classList.add('bg-blue-600');
+                }, 2000);
+            }
+        }
+        
+        // Función para borrar todos los datos
+        async function clearAllData() {
+            const confirmed = confirm('⚠️ ¿Estás seguro de que quieres borrar TODOS los datos?\n\n' +
+                'Esta acción:\n' +
+                '• Eliminará todos los empleados\n' +
+                '• Eliminará todos los registros de nómina\n' +
+                '• Eliminará el historial de archivos procesados\n\n' +
+                'Se creará un backup automático antes de borrar.\n\n' +
+                '¿Continuar?');
+            
+            if (!confirmed) return;
+            
+            const doubleConfirm = confirm('🔴 CONFIRMACIÓN FINAL\n\n' +
+                '¿Realmente quieres borrar TODO?\n' +
+                'Esta acción no se puede deshacer (excepto restaurando el backup).');
+            
+            if (!doubleConfirm) return;
+            
+            try {
+                const response = await fetch('/api/clear-all', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert(`✅ Datos borrados exitosamente\n\n` +
+                        `Backup creado: ${data.backup_created || 'auto'}\n` +
+                        `Empleados eliminados: ${data.employees_deleted || 0}\n` +
+                        `Registros de nómina eliminados: ${data.payroll_deleted || 0}`);
+                    
+                    // Recargar estadísticas
+                    loadStats();
+                    
+                    // Ocultar lista de archivos
+                    document.getElementById('fileList').classList.add('hidden');
+                    document.getElementById('progressSection').classList.add('hidden');
+                } else {
+                    alert('❌ Error al borrar datos: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error al borrar datos: ' + error.message);
+            }
         }
 
         // Load stats
@@ -400,6 +770,133 @@
 
         async function updateSetting(key, value) {
             await fetch(`/api/settings/${key}?value=${encodeURIComponent(value)}`, { method: 'POST' });
+        }
+
+        // ========================================
+        // 賃金台帳 - Búsqueda y generación por empleado
+        // ========================================
+        
+        let currentEmployee = null;
+
+        async function searchEmployee() {
+            const employeeId = document.getElementById('employeeIdInput').value.trim();
+            if (!employeeId) {
+                alert('Por favor ingresa el ID del empleado');
+                return;
+            }
+
+            document.getElementById('employeeResult').classList.add('hidden');
+            document.getElementById('employeeNotFound').classList.add('hidden');
+            document.getElementById('previewSection').classList.add('hidden');
+
+            try {
+                const response = await fetch(`/api/employee/${employeeId}`);
+                const data = await response.json();
+
+                if (data.found) {
+                    currentEmployee = data;
+                    
+                    document.getElementById('empName').textContent = data.name_jp || data.name_roman || '-';
+                    document.getElementById('empId').textContent = `ID: ${data.employee_id}`;
+                    document.getElementById('empDispatch').textContent = data.dispatch || '-';
+                    document.getElementById('empRecords').textContent = data.records || 0;
+                    document.getElementById('empPeriods').textContent = 
+                        data.periods ? data.periods.slice(0, 3).join(', ') + (data.periods.length > 3 ? '...' : '') : '-';
+                    document.getElementById('empRoman').textContent = data.name_roman || '-';
+                    
+                    document.getElementById('employeeResult').classList.remove('hidden');
+                } else {
+                    document.getElementById('employeeNotFound').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al buscar empleado: ' + error.message);
+            }
+        }
+
+        async function previewChingin() {
+            if (!currentEmployee) return;
+            
+            const year = document.getElementById('yearSelect').value;
+            
+            try {
+                const response = await fetch(`/api/employee/${currentEmployee.employee_id}/preview?year=${year}`);
+                if (!response.ok) {
+                    throw new Error('No hay datos para este año');
+                }
+                const data = await response.json();
+                
+                // Llenar tabla de preview
+                const tbody = document.getElementById('previewTable');
+                let html = '';
+                let totals = { workDays: 0, workHours: 0, overtimeHours: 0, basePay: 0, overtimePay: 0, totalPay: 0, deduction: 0, netPay: 0 };
+                
+                const monthNames = ['', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                
+                for (let month = 1; month <= 12; month++) {
+                    const m = data.data_by_month[month];
+                    if (m) {
+                        html += `
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="px-3 py-2 font-medium">${monthNames[month]}</td>
+                                <td class="px-3 py-2 text-center">${m.work_days || 0}</td>
+                                <td class="px-3 py-2 text-center">${m.work_hours || 0}h</td>
+                                <td class="px-3 py-2 text-center">${m.overtime_hours || 0}h</td>
+                                <td class="px-3 py-2 text-right">¥${(m.base_pay || 0).toLocaleString()}</td>
+                                <td class="px-3 py-2 text-right">¥${(m.overtime_pay || 0).toLocaleString()}</td>
+                                <td class="px-3 py-2 text-right">¥${(m.total_pay || 0).toLocaleString()}</td>
+                                <td class="px-3 py-2 text-right">¥${(m.deduction_total || 0).toLocaleString()}</td>
+                                <td class="px-3 py-2 text-right font-semibold text-green-600">¥${(m.net_pay || 0).toLocaleString()}</td>
+                            </tr>
+                        `;
+                        totals.workDays += m.work_days || 0;
+                        totals.workHours += m.work_hours || 0;
+                        totals.overtimeHours += m.overtime_hours || 0;
+                        totals.basePay += m.base_pay || 0;
+                        totals.overtimePay += m.overtime_pay || 0;
+                        totals.totalPay += m.total_pay || 0;
+                        totals.deduction += m.deduction_total || 0;
+                        totals.netPay += m.net_pay || 0;
+                    } else {
+                        html += `
+                            <tr class="border-b text-gray-400">
+                                <td class="px-3 py-2 font-medium">${monthNames[month]}</td>
+                                <td class="px-3 py-2 text-center">-</td>
+                                <td class="px-3 py-2 text-center">-</td>
+                                <td class="px-3 py-2 text-center">-</td>
+                                <td class="px-3 py-2 text-right">-</td>
+                                <td class="px-3 py-2 text-right">-</td>
+                                <td class="px-3 py-2 text-right">-</td>
+                                <td class="px-3 py-2 text-right">-</td>
+                                <td class="px-3 py-2 text-right">-</td>
+                            </tr>
+                        `;
+                    }
+                }
+                
+                tbody.innerHTML = html;
+                
+                // Totales
+                document.getElementById('totalWorkDays').textContent = totals.workDays;
+                document.getElementById('totalWorkHours').textContent = totals.workHours + 'h';
+                document.getElementById('totalOvertimeHours').textContent = totals.overtimeHours + 'h';
+                document.getElementById('totalBasePay').textContent = '¥' + totals.basePay.toLocaleString();
+                document.getElementById('totalOvertimePay').textContent = '¥' + totals.overtimePay.toLocaleString();
+                document.getElementById('totalPay').textContent = '¥' + totals.totalPay.toLocaleString();
+                document.getElementById('totalDeduction').textContent = '¥' + totals.deduction.toLocaleString();
+                document.getElementById('totalNetPay').textContent = '¥' + totals.netPay.toLocaleString();
+                
+                document.getElementById('previewSection').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar preview: ' + error.message);
+            }
+        }
+
+        function generateChingin() {
+            if (!currentEmployee) return;
+            const year = document.getElementById('yearSelect').value;
+            window.location.href = `/api/employee/${currentEmployee.employee_id}/chingin?year=${year}`;
         }
 
         // Init

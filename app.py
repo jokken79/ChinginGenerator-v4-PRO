@@ -5,11 +5,14 @@ Sistema completo con base de datos, auditoría y backups
 """
 
 from fastapi import FastAPI, UploadFile, File, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
 import shutil
+import re
+import json
+import asyncio
 from datetime import datetime
 from typing import List
 
@@ -18,7 +21,8 @@ from database import (
     init_database, get_statistics, get_audit_log,
     create_backup, get_backups, verify_backup_integrity,
     restore_from_backup, get_all_settings, set_setting,
-    get_all_employees, get_all_payroll_records, get_periods
+    get_all_employees, get_all_payroll_records, get_periods,
+    clear_all_data
 )
 
 # Configuración
@@ -146,6 +150,77 @@ async def export_chingin():
 
 
 # ========================================
+# API - BÚSQUEDA Y GENERACIÓN POR EMPLEADO
+# ========================================
+
+@app.get("/api/employee/{employee_id}")
+async def search_employee(employee_id: str):
+    """Buscar información de un empleado por ID"""
+    result = processor.search_employee(employee_id)
+    return JSONResponse(result)
+
+
+@app.get("/api/employee/{employee_id}/chingin")
+async def generate_employee_chingin(employee_id: str, year: int = None):
+    """Generar 賃金台帳 para un empleado específico en formato Print"""
+    if year is None:
+        year = datetime.now().year
+    
+    result = processor.generate_chingin_print(employee_id, year)
+    
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    
+    # Devolver el archivo
+    if result.get("output_path") and os.path.exists(result["output_path"]):
+        filename = f"賃金台帳_{employee_id}_{year}.xlsx"
+        return FileResponse(result["output_path"], filename=filename)
+    
+    return JSONResponse(result)
+
+
+@app.get("/api/employee/{employee_id}/preview")
+async def preview_employee_chingin(employee_id: str, year: int = None):
+    """Obtener vista previa de datos del empleado para 賃金台帳"""
+    from database import get_payroll_by_employee
+    
+    if year is None:
+        year = datetime.now().year
+    
+    records = get_payroll_by_employee(employee_id)
+    
+    if not records:
+        raise HTTPException(status_code=404, detail=f"No se encontraron datos para {employee_id}")
+    
+    # Organizar por mes
+    by_month = {}
+    for rec in records:
+        period = rec.get("period", "")
+        match = re.search(r'(\d+)月', str(period))
+        if match:
+            month = int(match.group(1))
+            by_month[month] = {
+                "period": rec.get("period"),
+                "work_days": rec.get("work_days"),
+                "work_hours": rec.get("work_hours"),
+                "overtime_hours": rec.get("overtime_hours"),
+                "base_pay": rec.get("base_pay"),
+                "overtime_pay": rec.get("overtime_pay"),
+                "total_pay": rec.get("total_pay"),
+                "deduction_total": rec.get("deduction_total"),
+                "net_pay": rec.get("net_pay"),
+            }
+    
+    return JSONResponse({
+        "employee_id": employee_id,
+        "name_jp": records[0].get('name_jp', ''),
+        "name_roman": records[0].get('name_roman', ''),
+        "year": year,
+        "data_by_month": by_month
+    })
+
+
+# ========================================
 # API - ESTADÍSTICAS
 # ========================================
 
@@ -240,6 +315,83 @@ async def clear_session():
         os.remove(os.path.join(UPLOAD_DIR, f))
     
     return JSONResponse({"status": "ok", "message": "Sesión limpiada"})
+
+
+@app.post("/api/clear-all")
+async def clear_all_database():
+    """Borrar TODOS los datos de la base de datos"""
+    # Primero crear un backup
+    backup = create_backup('auto', 'Backup antes de borrar todos los datos')
+    
+    # Limpiar procesador
+    processor.clear()
+    
+    # Limpiar archivos temporales
+    for f in os.listdir(UPLOAD_DIR):
+        try:
+            os.remove(os.path.join(UPLOAD_DIR, f))
+        except:
+            pass
+    
+    # Borrar datos de BD
+    result = clear_all_data()
+    result['backup_created'] = backup.get('filename', 'error')
+    
+    return JSONResponse(result)
+
+
+@app.post("/api/upload-with-progress")
+async def upload_files_with_progress(files: List[UploadFile] = File(...)):
+    """Subir y procesar archivos con progreso detallado (respuesta normal)"""
+    results = []
+    total_files = len(files)
+    total_records = 0
+    
+    for idx, file in enumerate(files):
+        file_result = {
+            "filename": file.filename,
+            "file_number": idx + 1,
+            "total_files": total_files,
+            "status": "processing"
+        }
+        
+        if not file.filename.endswith(('.xlsm', '.xlsx', '.xls')):
+            file_result["status"] = "error"
+            file_result["message"] = "Formato no soportado"
+            results.append(file_result)
+            continue
+        
+        # Guardar archivo
+        filepath = os.path.join(UPLOAD_DIR, file.filename)
+        with open(filepath, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        file_result["step"] = "saved"
+        file_result["size"] = len(content)
+        
+        # Procesar
+        result = processor.process_file(filepath)
+        
+        file_result["status"] = result.get("status", "error")
+        file_result["records"] = result.get("records", 0)
+        total_records += result.get("records", 0)
+        
+        if result.get("status") == "error":
+            file_result["message"] = result.get("message", "Error desconocido")
+        
+        results.append(file_result)
+    
+    return JSONResponse({
+        "results": results,
+        "summary": {
+            "total_files": total_files,
+            "successful": len([r for r in results if r["status"] == "success"]),
+            "failed": len([r for r in results if r["status"] == "error"]),
+            "total_records": total_records
+        },
+        "stats": get_statistics()
+    })
 
 
 @app.get("/api/health")
