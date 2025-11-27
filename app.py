@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-賃金台帳 Generator v4 PRO - Web Application
-Sistema completo con base de datos, auditoría y backups
+賃金台帳 Generator v4 PRO - Web Application OPTIMIZADO
+Sistema completo con base de datos, auditoría, backups y mejoras de performance
 """
 
 from fastapi import FastAPI, UploadFile, File, Request, HTTPException
@@ -13,9 +13,13 @@ import shutil
 import re
 import json
 import asyncio
-from datetime import datetime
-from typing import List
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
 from urllib.parse import quote
+import threading
+import time
+from functools import lru_cache
+import hashlib
 
 from excel_processor import ExcelProcessor
 from database import (
@@ -29,7 +33,39 @@ from database import (
     get_dispatch_companies, get_ukeoi_job_types,
     get_employees_by_company, get_employees_by_job_type
 )
-import time
+
+# Importar optimizaciones de performance
+try:
+    from performance_optimizations import (
+        PerformanceCache,
+        get_all_employees_cached,
+        get_statistics_cached,
+        get_periods_cached,
+        bulk_insert_payroll_records,
+        optimize_database_indexes,
+        get_performance_metrics
+    )
+    PERFORMANCE_ENABLED = True
+    print("✅ Optimizaciones de performance cargadas")
+except ImportError:
+    PERFORMANCE_ENABLED = False
+    print("⚠️ Módulo de optimizaciones no encontrado, usando funciones originales")
+
+# Importar agentes Claude para análisis avanzado
+try:
+    from claude_agents import (
+        PayrollAnalyzerAgent,
+        ReportGeneratorAgent,
+        DataValidationAgent,
+        TrendAnalysisAgent,
+        AnomalyDetectionAgent,
+        ComplianceAgent
+    )
+    AGENTS_ENABLED = True
+    print("🤖 Agentes Claude Elite cargados y listos")
+except ImportError:
+    AGENTS_ENABLED = False
+    print("⚠️ Agentes Claude no encontrados, análisis avanzado no disponible")
 
 # Configuración
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -39,25 +75,39 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# Inicializar cache de performance si está disponible
+if PERFORMANCE_ENABLED:
+    cache = PerformanceCache()
+else:
+    cache = None
+
 # Inicializar app
 app = FastAPI(
-    title="賃金台帳 Generator v4 PRO",
-    description="Sistema de Nóminas Japonesas con Base de Datos",
-    version="4.0.0"
+    title="賃金台帳 Generator v4 PRO - OPTIMIZADO",
+    description="Sistema de Nóminas Japonesas con Base de Datos y Optimizaciones",
+    version="4.1.0"
 )
 
-# Middleware para logging de performance
+# Middleware mejorado para logging de performance y cache
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def enhanced_log_requests(request: Request, call_next):
     start_time = time.time()
     response = await call_next(request)
     duration = time.time() - start_time
 
-    # Log solo si toma más de 500ms
+    # Log mejorado con indicadores de cache
     if duration > 0.5:
         print(f"⚠️ SLOW: {request.method} {request.url.path} took {duration:.2f}s")
     elif duration > 0.2:
         print(f"⏱️ {request.method} {request.url.path} took {duration:.2f}s")
+    else:
+        print(f"✅ FAST: {request.method} {request.url.path} took {duration:.3f}s")
+
+    # Headers de debugging
+    response.headers["X-Response-Time"] = f"{duration:.3f}s"
+    if cache and hasattr(cache, 'cache_hits'):
+        response.headers["X-Cache-Hits"] = str(cache.cache_hits)
+        response.headers["X-Cache-Misses"] = str(cache.cache_misses)
 
     return response
 
@@ -75,12 +125,30 @@ processor = ExcelProcessor()
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """Página principal"""
-    stats = get_statistics()
-    return templates.TemplateResponse("index.html", {
+    """Página principal con estadísticas cacheadas - UI Moderna"""
+    if PERFORMANCE_ENABLED:
+        stats = get_statistics_cached()
+    else:
+        stats = get_statistics()
+    
+    # Detectar si se solicita UI clásica
+    ui_theme = request.query_params.get("theme", "moderno")
+    template_name = "index.html" if ui_theme == "clasico" else "index_moderno.html"
+    
+    return templates.TemplateResponse(template_name, {
         "request": request,
         "stats": stats
     })
+
+@app.get("/theme/{theme}")
+async def switch_theme(theme: str):
+    """Cambiar tema de la interfaz"""
+    if theme not in ["moderno", "clasico"]:
+        raise HTTPException(status_code=400, detail="Tema no válido")
+    
+    # Redirigir a home con el tema seleccionado
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/?theme={theme}", status_code=302)
 
 
 # ========================================
@@ -122,12 +190,26 @@ async def upload_files(files: List[UploadFile] = File(...)):
 
 @app.get("/api/data")
 async def get_data():
-    """Obtener todos los datos"""
+    """Obtener todos los datos con optimizaciones de cache"""
+    # Usar funciones cacheadas si están disponibles
+    if PERFORMANCE_ENABLED:
+        employees = get_all_employees_cached()
+        periods = get_periods_cached()
+        stats = get_statistics_cached()
+    else:
+        employees = get_all_employees()
+        periods = get_periods()
+        stats = get_statistics()
+    
+    # Los records de payroll no se cachean porque cambian frecuentemente
+    records = get_all_payroll_records()
+    
     return JSONResponse({
-        "records": get_all_payroll_records(),
-        "employees": get_all_employees(),
-        "periods": get_periods(),
-        "stats": get_statistics()
+        "records": records,
+        "employees": employees,
+        "periods": periods,
+        "stats": stats,
+        "cache_enabled": PERFORMANCE_ENABLED
     })
 
 
@@ -460,20 +542,35 @@ async def preview_employee_chingin(employee_id: str, year: int = None):
 
 @app.get("/api/stats")
 async def get_stats():
-    """Obtener estadísticas"""
-    return JSONResponse(get_statistics())
+    """Obtener estadísticas con cache"""
+    if PERFORMANCE_ENABLED:
+        stats = get_statistics_cached()
+    else:
+        stats = get_statistics()
+    
+    return JSONResponse(stats)
 
 
 @app.get("/api/employees")
 async def get_employees():
-    """Obtener lista de empleados"""
-    return JSONResponse(get_all_employees())
+    """Obtener lista de empleados con cache"""
+    if PERFORMANCE_ENABLED:
+        employees = get_all_employees_cached()
+    else:
+        employees = get_all_employees()
+    
+    return JSONResponse(employees)
 
 
 @app.get("/api/periods")
 async def get_periods_list():
-    """Obtener lista de periodos"""
-    return JSONResponse(get_periods())
+    """Obtener lista de periodos con cache"""
+    if PERFORMANCE_ENABLED:
+        periods = get_periods_cached()
+    else:
+        periods = get_periods()
+    
+    return JSONResponse(periods)
 
 
 # ========================================
@@ -630,14 +727,22 @@ async def upload_files_with_progress(files: List[UploadFile] = File(...)):
 
 @app.get("/api/health")
 async def health_check():
-    """Health check"""
-    stats = get_statistics()
+    """Health check mejorado con métricas de performance"""
+    if PERFORMANCE_ENABLED:
+        stats = get_statistics_cached()
+        metrics = get_performance_metrics()
+    else:
+        stats = get_statistics()
+        metrics = {"cache_enabled": False}
+    
     return JSONResponse({
         "status": "healthy",
-        "version": "4.0.0",
+        "version": "4.1.0",
+        "performance_optimized": PERFORMANCE_ENABLED,
         "db_hash": stats['db_hash'][:16],
         "employees": stats['total_employees'],
-        "records": stats['total_payroll_records']
+        "records": stats['total_payroll_records'],
+        **metrics
     })
 
 
@@ -730,12 +835,359 @@ async def get_job_type_employees(job_type: str):
     return JSONResponse(get_employees_by_job_type(jt))
 
 
-# Inicializar BD al arrancar
+# Nuevos endpoints para gestión de cache y optimización
+
+@app.get("/api/cache/clear")
+async def clear_cache():
+    """Limpiar cache de performance"""
+    if PERFORMANCE_ENABLED and cache:
+        cache.clear()
+        return JSONResponse({
+            "status": "ok",
+            "message": "Cache limpiado",
+            "cache_enabled": True
+        })
+    else:
+        return JSONResponse({
+            "status": "ok",
+            "message": "Cache no disponible",
+            "cache_enabled": False
+        })
+
+@app.get("/api/cache/stats")
+async def get_cache_stats():
+    """Obtener estadísticas del cache"""
+    if PERFORMANCE_ENABLED and cache:
+        return JSONResponse({
+            "cache_enabled": True,
+            "cache_size": len(cache.cache),
+            "cache_hits": cache.cache_hits,
+            "cache_misses": cache.cache_misses,
+            "hit_rate": cache.cache_hits / (cache.cache_hits + cache.cache_misses) if (cache.cache_hits + cache.cache_misses) > 0 else 0
+        })
+    else:
+        return JSONResponse({
+            "cache_enabled": False,
+            "message": "Cache no disponible"
+        })
+
+@app.post("/api/optimize-db")
+async def optimize_database():
+    """Optimizar índices de la base de datos"""
+    if PERFORMANCE_ENABLED:
+        try:
+            result = optimize_database_indexes()
+            return JSONResponse({
+                "status": "ok",
+                "message": "Base de datos optimizada",
+                "result": result
+            })
+        except Exception as e:
+            return JSONResponse({
+                "status": "error",
+                "message": f"Error optimizando BD: {str(e)}"
+            }, status_code=500)
+    else:
+        return JSONResponse({
+            "status": "error",
+            "message": "Optimización no disponible"
+        }, status_code=501)
+
+# ========================================
+# API - AGENTES CLAUDE ELITE (ANÁLISIS AVANZADO)
+# ========================================
+
+@app.get("/api/agents/status")
+async def get_agents_status():
+    """Verificar estado de los agentes Claude"""
+    return JSONResponse({
+        "agents_enabled": AGENTS_ENABLED,
+        "available_agents": [
+            "PayrollAnalyzerAgent",
+            "ReportGeneratorAgent",
+            "DataValidationAgent",
+            "TrendAnalysisAgent",
+            "AnomalyDetectionAgent",
+            "ComplianceAgent"
+        ] if AGENTS_ENABLED else []
+    })
+
+@app.post("/api/agents/analyze-payroll")
+async def analyze_payroll_data():
+    """Analizar datos de nómina con agente especializado"""
+    if not AGENTS_ENABLED:
+        return JSONResponse({
+            "status": "error",
+            "message": "Agentes Claude no disponibles"
+        }, status_code=501)
+    
+    try:
+        # Obtener datos
+        if PERFORMANCE_ENABLED:
+            employees = get_all_employees_cached()
+            payroll_records = get_all_payroll_records()
+        else:
+            employees = get_all_employees()
+            payroll_records = get_all_payroll_records()
+        
+        # Usar agente para análisis
+        agent = PayrollAnalyzerAgent()
+        analysis = agent.analyze_payroll_data(employees, payroll_records)
+        
+        return JSONResponse({
+            "status": "ok",
+            "analysis": analysis,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "message": f"Error en análisis: {str(e)}"
+        }, status_code=500)
+
+@app.post("/api/agents/detect-anomalies")
+async def detect_payroll_anomalies():
+    """Detectar anomalías en datos de nómina"""
+    if not AGENTS_ENABLED:
+        return JSONResponse({
+            "status": "error",
+            "message": "Agentes Claude no disponibles"
+        }, status_code=501)
+    
+    try:
+        # Obtener datos recientes
+        payroll_records = get_all_payroll_records()
+        
+        # Usar agente de detección de anomalías
+        agent = AnomalyDetectionAgent()
+        anomalies = agent.detect_anomalies(payroll_records)
+        
+        return JSONResponse({
+            "status": "ok",
+            "anomalies": anomalies,
+            "total_records": len(payroll_records),
+            "anomaly_count": len(anomalies),
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "message": f"Error detectando anomalías: {str(e)}"
+        }, status_code=500)
+
+@app.post("/api/agents/generate-report")
+async def generate_intelligent_report(report_type: str = "monthly"):
+    """Generar reporte inteligente con agente especializado"""
+    if not AGENTS_ENABLED:
+        return JSONResponse({
+            "status": "error",
+            "message": "Agentes Claude no disponibles"
+        }, status_code=501)
+    
+    try:
+        # Obtener datos según tipo de reporte
+        if PERFORMANCE_ENABLED:
+            stats = get_statistics_cached()
+            employees = get_all_employees_cached()
+            periods = get_periods_cached()
+        else:
+            stats = get_statistics()
+            employees = get_all_employees()
+            periods = get_periods()
+        
+        payroll_records = get_all_payroll_records()
+        
+        # Usar agente generador de reportes
+        agent = ReportGeneratorAgent()
+        report = agent.generate_report(
+            report_type=report_type,
+            stats=stats,
+            employees=employees,
+            payroll_records=payroll_records,
+            periods=periods
+        )
+        
+        return JSONResponse({
+            "status": "ok",
+            "report": report,
+            "report_type": report_type,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "message": f"Error generando reporte: {str(e)}"
+        }, status_code=500)
+
+@app.post("/api/agents/analyze-trends")
+async def analyze_salary_trends():
+    """Analizar tendencias salariales con agente especializado"""
+    if not AGENTS_ENABLED:
+        return JSONResponse({
+            "status": "error",
+            "message": "Agentes Claude no disponibles"
+        }, status_code=501)
+    
+    try:
+        # Obtener datos históricos
+        payroll_records = get_all_payroll_records()
+        employees = get_all_employees()
+        
+        # Usar agente de análisis de tendencias
+        agent = TrendAnalysisAgent()
+        trends = agent.analyze_trends(payroll_records, employees)
+        
+        return JSONResponse({
+            "status": "ok",
+            "trends": trends,
+            "data_points": len(payroll_records),
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "message": f"Error analizando tendencias: {str(e)}"
+        }, status_code=500)
+
+@app.post("/api/agents/validate-data")
+async def validate_payroll_data():
+    """Validar integridad de datos con agente especializado"""
+    if not AGENTS_ENABLED:
+        return JSONResponse({
+            "status": "error",
+            "message": "Agentes Claude no disponibles"
+        }, status_code=501)
+    
+    try:
+        # Obtener todos los datos
+        employees = get_all_employees()
+        payroll_records = get_all_payroll_records()
+        periods = get_periods()
+        
+        # Usar agente de validación
+        agent = DataValidationAgent()
+        validation = agent.validate_data(employees, payroll_records, periods)
+        
+        return JSONResponse({
+            "status": "ok",
+            "validation": validation,
+            "employees_count": len(employees),
+            "records_count": len(payroll_records),
+            "periods_count": len(periods),
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "message": f"Error validando datos: {str(e)}"
+        }, status_code=500)
+
+@app.post("/api/agents/compliance-check")
+async def check_compliance():
+    """Verificar cumplimiento normativo japonés"""
+    if not AGENTS_ENABLED:
+        return JSONResponse({
+            "status": "error",
+            "message": "Agentes Claude no disponibles"
+        }, status_code=501)
+    
+    try:
+        # Obtener datos relevantes para cumplimiento
+        employees = get_all_employees()
+        payroll_records = get_all_payroll_records()
+        
+        # Usar agente de cumplimiento
+        agent = ComplianceAgent()
+        compliance = agent.check_japanese_compliance(employees, payroll_records)
+        
+        return JSONResponse({
+            "status": "ok",
+            "compliance": compliance,
+            "employees_checked": len(employees),
+            "records_checked": len(payroll_records),
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "message": f"Error verificando cumplimiento: {str(e)}"
+        }, status_code=500)
+
+# Inicializar BD al arrancar con optimizaciones
 @app.on_event("startup")
 async def startup():
     init_database()
-    print("[OK] Base de datos inicializada")
-    print("[OK] ChinginApp v4 PRO listo!")
+    
+    # Optimizar base de datos si está disponible
+    if PERFORMANCE_ENABLED:
+        try:
+            optimize_database_indexes()
+            print("✅ Base de datos optimizada con índices")
+        except Exception as e:
+            print(f"⚠️ Error optimizando BD: {e}")
+    
+    # Limpiar archivos viejos al iniciar
+    try:
+        cleanup_old_files()
+        print("✅ Limpieza de archivos viejos completada")
+    except Exception as e:
+        print(f"⚠️ Error en limpieza: {e}")
+    
+    print("✅ Base de datos inicializada")
+    print("✅ ChinginApp v4.1 PRO OPTIMIZADO listo!")
+    if PERFORMANCE_ENABLED:
+        print("🚀 Optimizaciones de performance activadas")
+    if AGENTS_ENABLED:
+        print("🤖 Agentes Claude Elite activados para análisis avanzado")
+
+def cleanup_old_files(days: int = 7, delete: bool = True):
+    """Limpiar archivos viejos de uploads y outputs"""
+    import glob
+    from datetime import datetime
+    
+    cutoff_time = datetime.now() - timedelta(days=days)
+    deleted_count = 0
+    
+    # Limpiar uploads
+    for pattern in ["uploads/*.xlsx", "uploads/*.xlsm", "uploads/*.xls"]:
+        for filepath in glob.glob(os.path.join(BASE_DIR, pattern)):
+            try:
+                file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
+                if file_time < cutoff_time:
+                    if delete:
+                        os.remove(filepath)
+                        deleted_count += 1
+                    else:
+                        print(f"Would delete: {filepath}")
+            except Exception as e:
+                print(f"Error processing {filepath}: {e}")
+    
+    # Limpiar outputs (solo archivos temporales, no los .xlsx finales)
+    for pattern in ["outputs/temp_*", "outputs/tmp_*"]:
+        for filepath in glob.glob(os.path.join(BASE_DIR, pattern)):
+            try:
+                file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
+                if file_time < cutoff_time:
+                    if delete:
+                        os.remove(filepath)
+                        deleted_count += 1
+                    else:
+                        print(f"Would delete: {filepath}")
+            except Exception as e:
+                print(f"Error processing {filepath}: {e}")
+    
+    if delete:
+        print(f"🗑️ Eliminados {deleted_count} archivos viejos")
+    else:
+        print(f"📋 Se eliminarían {deleted_count} archivos viejos")
+    
+    return deleted_count
 
 
 if __name__ == "__main__":
