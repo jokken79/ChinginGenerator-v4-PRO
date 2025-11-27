@@ -1,0 +1,91 @@
+<!-- Selector de Tema - Widget Flotante -->
+<div id="themeSelector" class="fixed bottom-6 right-6 z-50 glass-morphism rounded-2xl p-4 border border-white/20">
+    <div class="flex items-center gap-3 mb-3">
+        <i class="fas fa-palette text-white text-lg"></i>
+        <span class="text-white font-medium">Tema de Interfaz</span>
+    </div>
+    <div class="flex gap-2">
+        <button onclick="setTheme('moderno')" id="btnModerno" class="theme-btn active px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-2">
+            <i class="fas fa-rocket"></i>
+            Moderno
+        </button>
+        <button onclick="setTheme('clasico')" id="btnClasico" class="theme-btn px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-2">
+            <i class="fas fa-desktop"></i>
+            Clásico
+        </button>
+    </div>
+</div>
+
+<style>
+.theme-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.theme-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-1px);
+}
+
+.theme-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+}
+
+#themeSelector {
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+#themeSelector.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+</style>
+
+<script>
+function setTheme(theme) {
+    // Actualizar botones
+    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (theme === 'moderno') {
+        document.getElementById('btnModerno').classList.add('active');
+        localStorage.setItem('chingin-theme', 'moderno');
+    } else {
+        document.getElementById('btnClasico').classList.add('active');
+        localStorage.setItem('chingin-theme', 'clasico');
+    }
+    
+    // Redirigir al tema seleccionado
+    window.location.href = `/theme/${theme}`;
+}
+
+// Toggle selector
+let selectorVisible = false;
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        selectorVisible = !selectorVisible;
+        const selector = document.getElementById('themeSelector');
+        if (selectorVisible) {
+            selector.classList.add('show');
+        } else {
+            selector.classList.remove('show');
+        }
+    }
+});
+
+// Mostrar selector al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('chingin-theme') || 'moderno';
+    setTimeout(() => {
+        document.getElementById('themeSelector').classList.add('show');
+        setTimeout(() => {
+            document.getElementById('themeSelector').classList.remove('show');
+        }, 3000);
+    }, 1000);
+});
+</script>
