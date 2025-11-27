@@ -1,0 +1,74 @@
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Archivos de base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos de salida generados
+outputs/
+*.xlsx
+*.xls
+*.csv
+*.pdf
+
+# Archivos de backup
+backups/
+*.bak
+*.backup
+
+# Archivos de logs
+*.log
+server.log
+
+# Archivos temporales
+*.tmp
+*.temp
+nul
+
+# Archivos de prueba
+test_*.xlsx
+test_*.xls
+test_*.csv
+
+# Archivos subidos por usuarios
+uploads/
+
+# Archivos de configuración del IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de entorno virtual
+venv/
+env/
+ENV/
+
+# Archivos de Claude
+.claude/
