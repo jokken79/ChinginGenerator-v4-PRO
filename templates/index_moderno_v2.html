@@ -678,6 +678,61 @@
                     </button>
                 </div>
             </div>
+            
+            <!-- Sincronización de Empleados -->
+            <div class="glass-morphism rounded-2xl p-8 mt-8">
+                <h2 class="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                    <i class="fas fa-sync text-blue-400"></i>
+                    🔄 社員マスター同期
+                </h2>
+                <p class="text-white/70 mb-6">
+                    Sincronizar datos de empleados desde el archivo maestro en la red:<br>
+                    <code class="bg-white/10 px-3 py-1 rounded text-sm">\\UNS-Kikaku\共有フォルダ\SCTDateBase\【新】社員台帳(UNS)T</code>
+                </p>
+                
+                <!-- Stats de empleados -->
+                <div id="employeeStats" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="glass-morphism rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-blue-400">派遣社員</h3>
+                            <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-users text-blue-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-3xl font-bold text-white mb-2" id="hakenTotal">-</p>
+                        <p class="text-blue-300 text-sm mb-1">在職中: <span id="hakenActive">-</span></p>
+                        <p class="text-white/50 text-xs">最終同期: <span id="hakenLastSync">-</span></p>
+                    </div>
+                    <div class="glass-morphism rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-green-400">請負社員</h3>
+                            <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-users text-green-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-3xl font-bold text-white mb-2" id="ukeoiTotal">-</p>
+                        <p class="text-green-300 text-sm mb-1">在職中: <span id="ukeoiActive">-</span></p>
+                        <p class="text-white/50 text-xs">最終同期: <span id="ukeoiLastSync">-</span></p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="syncAllEmployees()" id="syncAllBtn" class="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+                        <i class="fas fa-sync"></i>
+                        全員同期 (派遣 + 請負)
+                    </button>
+                    <button onclick="syncHakenOnly()" class="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+                        <i class="fas fa-user-tie"></i>
+                        派遣のみ
+                    </button>
+                    <button onclick="syncUkeoiOnly()" class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+                        <i class="fas fa-hard-hat"></i>
+                        請負のみ
+                    </button>
+                </div>
+                
+                <div id="syncResult" class="mt-6 hidden"></div>
+            </div>
         </section>
 
         <!-- Other tabs (Backup, Audit) - Simplified for modern UI -->
@@ -1159,10 +1214,134 @@
             showNotification('🎨 Usa la pestaña Configuración para cambiar temas', 'info');
         }
 
+        // ========================================
+        // SINCRONIZACIÓN DE EMPLEADOS
+        // ========================================
+        
+        async function loadEmployeeStats() {
+            try {
+                const response = await fetch('/api/employee-master-stats');
+                const stats = await response.json();
+                
+                document.getElementById('hakenTotal').textContent = stats.haken_total || 0;
+                document.getElementById('hakenActive').textContent = stats.haken_active || 0;
+                document.getElementById('hakenLastSync').textContent = stats.haken_last_sync ?
+                    new Date(stats.haken_last_sync).toLocaleString('ja-JP') : '未同期';
+                
+                document.getElementById('ukeoiTotal').textContent = stats.ukeoi_total || 0;
+                document.getElementById('ukeoiActive').textContent = stats.ukeoi_active || 0;
+                document.getElementById('ukeoiLastSync').textContent = stats.ukeoi_last_sync ?
+                    new Date(stats.ukeoi_last_sync).toLocaleString('ja-JP') : '未同期';
+            } catch (error) {
+                console.error('Error loading employee stats:', error);
+            }
+        }
+        
+        async function syncAllEmployees() {
+            const btn = document.getElementById('syncAllBtn');
+            const resultDiv = document.getElementById('syncResult');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>同期中...';
+            resultDiv.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/sync-employees', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-green-500/20 border border-green-500/30';
+                    resultDiv.innerHTML = `
+                        <p class="text-green-400 font-bold text-lg mb-3">✅ 同期完了！</p>
+                        <p class="text-white/90 text-sm">
+                            派遣社員: 新規 ${result.haken?.inserted || 0}件, 更新 ${result.haken?.updated || 0}件<br>
+                            請負社員: 新規 ${result.ukeoi?.inserted || 0}件, 更新 ${result.ukeoi?.updated || 0}件
+                        </p>
+                    `;
+                    showNotification('✅ Sincronización completada exitosamente', 'success');
+                } else {
+                    resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-red-500/20 border border-red-500/30';
+                    resultDiv.innerHTML = `
+                        <p class="text-red-400 font-bold text-lg mb-3">❌ エラー</p>
+                        <p class="text-white/90 text-sm">${result.error || result.haken?.error || result.ukeoi?.error}</p>
+                    `;
+                    showNotification('❌ Error en sincronización', 'error');
+                }
+                resultDiv.classList.remove('hidden');
+                loadEmployeeStats();
+            } catch (error) {
+                resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-red-500/20 border border-red-500/30';
+                resultDiv.innerHTML = `
+                    <p class="text-red-400 font-bold text-lg mb-3">❌ ネットワークエラー</p>
+                    <p class="text-white/90 text-sm">${error.message}</p>
+                `;
+                resultDiv.classList.remove('hidden');
+                showNotification('❌ Error de red', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync mr-2"></i>全員同期 (派遣 + 請負)';
+            }
+        }
+        
+        async function syncHakenOnly() {
+            const resultDiv = document.getElementById('syncResult');
+            resultDiv.innerHTML = '<p class="text-white/70">⏳ 派遣社員を同期中...</p>';
+            resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-blue-500/20 border border-blue-500/30';
+            resultDiv.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/api/sync-haken', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-blue-500/20 border border-blue-500/30';
+                    resultDiv.innerHTML = `<p class="text-blue-400 font-bold">✅ 派遣社員同期完了: 新規 ${result.inserted}件, 更新 ${result.updated}件</p>`;
+                    showNotification('✅ 派遣社員 sincronizados', 'success');
+                } else {
+                    resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-red-500/20 border border-red-500/30';
+                    resultDiv.innerHTML = `<p class="text-red-400 font-bold">❌ ${result.error}</p>`;
+                    showNotification('❌ Error en 派遣社員', 'error');
+                }
+                loadEmployeeStats();
+            } catch (error) {
+                resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-red-500/20 border border-red-500/30';
+                resultDiv.innerHTML = `<p class="text-red-400 font-bold">❌ ${error.message}</p>`;
+                showNotification('❌ Error de red', 'error');
+            }
+        }
+        
+        async function syncUkeoiOnly() {
+            const resultDiv = document.getElementById('syncResult');
+            resultDiv.innerHTML = '<p class="text-white/70">⏳ 請負社員を同期中...</p>';
+            resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-green-500/20 border border-green-500/30';
+            resultDiv.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/api/sync-ukeoi', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-green-500/20 border border-green-500/30';
+                    resultDiv.innerHTML = `<p class="text-green-400 font-bold">✅ 請負社員同期完了: 新規 ${result.inserted}件, 更新 ${result.updated}件</p>`;
+                    showNotification('✅ 請負社員 sincronizados', 'success');
+                } else {
+                    resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-red-500/20 border border-red-500/30';
+                    resultDiv.innerHTML = `<p class="text-red-400 font-bold">❌ ${result.error}</p>`;
+                    showNotification('❌ Error en 請負社員', 'error');
+                }
+                loadEmployeeStats();
+            } catch (error) {
+                resultDiv.className = 'mt-6 p-6 glass-morphism rounded-2xl bg-red-500/20 border border-red-500/30';
+                resultDiv.innerHTML = `<p class="text-red-400 font-bold">❌ ${error.message}</p>`;
+                showNotification('❌ Error de red', 'error');
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             applyThemes();
             loadStats();
+            loadEmployeeStats();
             showNotification('🚀 賃金台帳 Generator v4.1 PRO Enhanced listo', 'success');
         });
     </script>
