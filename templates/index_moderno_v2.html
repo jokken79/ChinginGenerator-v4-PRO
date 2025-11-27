@@ -202,6 +202,49 @@
             background: rgba(0, 0, 0, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.4);
         }
+
+        /* Fix para select/option - texto visible en dropdown */
+        select option {
+            background-color: #ffffff;
+            color: #1a202c;
+            padding: 12px;
+        }
+
+        select option:hover,
+        select option:focus,
+        select option:checked {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+
+        .dark-theme select option {
+            background-color: #1a1a2e;
+            color: #f7fafc;
+        }
+
+        .dark-theme select option:hover,
+        .dark-theme select option:focus,
+        .dark-theme select option:checked {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+
+        /* Mejorar visibilidad de textos en glassmorphism */
+        .glass-morphism p[class*="text-white"],
+        section p[class*="text-white"] {
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Select fields con mejor legibilidad */
+        select {
+            color: #1a202c !important;
+            background-color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .dark-theme select {
+            color: #f7fafc !important;
+            background-color: rgba(0, 0, 0, 0.6) !important;
+        }
     </style>
 </head>
 <body class="min-h-screen light-theme">
