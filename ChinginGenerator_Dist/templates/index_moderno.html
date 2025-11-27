@@ -6,6 +6,11 @@
     <title>賃金台帳 Generator v4.1 PRO - Modern UI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Lordicon - Iconos Animados -->
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
+    <!-- AOS - Animate On Scroll -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
@@ -147,6 +152,256 @@
         select {
             background-color: rgba(255, 255, 255, 0.15) !important;
         }
+
+        /* ========== NUEVOS EFECTOS VISUALES ========== */
+
+        /* Efecto 3D Tilt en tarjetas */
+        .card-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .card-3d:hover {
+            transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) scale(1.02);
+        }
+
+        .card-3d-inner {
+            transform: translateZ(30px);
+        }
+
+        /* Efecto de brillo al hover */
+        .shine-effect {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shine-effect::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(255, 255, 255, 0.3) 50%,
+                transparent 70%
+            );
+            transform: translateX(-100%) rotate(45deg);
+            transition: transform 0.6s ease;
+        }
+
+        .shine-effect:hover::before {
+            transform: translateX(100%) rotate(45deg);
+        }
+
+        /* Botones con efecto ripple */
+        .btn-ripple {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-ripple::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 60%);
+            transform: scale(0);
+            opacity: 0;
+            transition: transform 0.5s, opacity 0.3s;
+        }
+
+        .btn-ripple:active::after {
+            transform: scale(2);
+            opacity: 1;
+            transition: 0s;
+        }
+
+        /* Iconos con bounce */
+        .icon-bounce:hover {
+            animation: iconBounce 0.6s ease;
+        }
+
+        @keyframes iconBounce {
+            0%, 100% { transform: translateY(0); }
+            25% { transform: translateY(-8px); }
+            50% { transform: translateY(0); }
+            75% { transform: translateY(-4px); }
+        }
+
+        /* Efecto glow pulsante */
+        .glow-pulse {
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% {
+                box-shadow: 0 0 5px rgba(102, 126, 234, 0.5),
+                            0 0 20px rgba(102, 126, 234, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.8),
+                            0 0 40px rgba(102, 126, 234, 0.5);
+            }
+        }
+
+        /* Texto con gradiente animado */
+        .animated-gradient-text {
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #667eea);
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientText 4s ease infinite;
+        }
+
+        @keyframes gradientText {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Ondas de fondo animadas */
+        .wave-bg {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='rgba(255,255,255,0.05)' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,181.3C672,181,768,139,864,128C960,117,1056,139,1152,154.7C1248,171,1344,181,1392,186.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") repeat-x;
+            animation: wave 15s linear infinite;
+        }
+
+        .wave:nth-child(2) {
+            bottom: 10px;
+            opacity: 0.5;
+            animation: wave 12s linear reverse infinite;
+        }
+
+        .wave:nth-child(3) {
+            bottom: 20px;
+            opacity: 0.3;
+            animation: wave 20s linear infinite;
+        }
+
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Partículas flotantes */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            opacity: 0.6;
+            animation: particleFloat 20s infinite;
+        }
+
+        @keyframes particleFloat {
+            0%, 100% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Badge animado */
+        .badge-new {
+            position: relative;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            animation: badgePop 0.5s ease;
+        }
+
+        @keyframes badgePop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Loader moderno */
+        .loader-modern {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Skeleton loading */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 75%);
+            background-size: 200% 100%;
+            animation: skeleton 1.5s infinite;
+        }
+
+        @keyframes skeleton {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Tooltip moderno */
+        .tooltip-modern {
+            position: relative;
+        }
+
+        .tooltip-modern::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            font-size: 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .tooltip-modern:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        /* Confetti explosion (para éxito) */
+        .confetti {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -156,6 +411,16 @@
         <div class="absolute w-96 h-96 bg-blue-500 rounded-full opacity-10 blur-3xl -bottom-48 -right-48 floating" style="animation-delay: 1s;"></div>
         <div class="absolute w-64 h-64 bg-pink-500 rounded-full opacity-10 blur-2xl top-1/2 left-1/2 floating" style="animation-delay: 2s;"></div>
     </div>
+
+    <!-- Ondas animadas de fondo -->
+    <div class="wave-bg">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+    </div>
+
+    <!-- Partículas flotantes -->
+    <div id="particles"></div>
 
     <!-- Header -->
     <header class="glass-morphism sticky top-0 z-50 border-b border-white/20">
@@ -189,59 +454,71 @@
     <main class="max-w-7xl mx-auto px-6 py-8">
         <!-- Stats Dashboard -->
         <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="stat-card rounded-2xl p-6 hover-scale">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-users text-blue-600 text-xl"></i>
+            <!-- Tarjeta Empleados -->
+            <div class="stat-card card-3d shine-effect rounded-2xl p-6" data-aos="fade-up" data-aos-delay="0">
+                <div class="card-3d-inner">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-14 h-14 bg-blue-500/20 rounded-xl flex items-center justify-center glow-pulse">
+                            <lord-icon src="https://cdn.lordicon.com/dxjqoygy.json" trigger="hover" colors="primary:#3b82f6" style="width:36px;height:36px"></lord-icon>
+                        </div>
+                        <span class="badge-new">+12%</span>
                     </div>
-                    <div class="text-blue-600 text-sm font-medium">+12%</div>
-                </div>
-                <p class="text-white/70 text-sm mb-1">Empleados</p>
-                <p id="statEmployees" class="text-3xl font-bold text-white">0</p>
-                <div class="mt-3 h-1 bg-blue-500/30 rounded-full overflow-hidden">
-                    <div class="h-full bg-blue-500 rounded-full" style="width: 75%;"></div>
+                    <p class="text-gray-500 text-sm mb-1 font-medium">Empleados</p>
+                    <p id="statEmployees" class="text-3xl font-bold text-gray-800">0</p>
+                    <div class="mt-3 h-2 bg-blue-500/20 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-1000" style="width: 75%;"></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="stat-card rounded-2xl p-6 hover-scale">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-file-alt text-green-600 text-xl"></i>
+            <!-- Tarjeta Registros -->
+            <div class="stat-card card-3d shine-effect rounded-2xl p-6" data-aos="fade-up" data-aos-delay="100">
+                <div class="card-3d-inner">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center glow-pulse" style="--glow-color: rgba(34, 197, 94, 0.5);">
+                            <lord-icon src="https://cdn.lordicon.com/nocovwne.json" trigger="hover" colors="primary:#22c55e" style="width:36px;height:36px"></lord-icon>
+                        </div>
+                        <span class="badge-new" style="background: linear-gradient(135deg, #22c55e, #16a34a);">+8%</span>
                     </div>
-                    <div class="text-green-600 text-sm font-medium">+8%</div>
-                </div>
-                <p class="text-white/70 text-sm mb-1">Registros</p>
-                <p id="statRecords" class="text-3xl font-bold text-white">0</p>
-                <div class="mt-3 h-1 bg-green-500/30 rounded-full overflow-hidden">
-                    <div class="h-full bg-green-500 rounded-full" style="width: 82%;"></div>
+                    <p class="text-gray-500 text-sm mb-1 font-medium">Registros</p>
+                    <p id="statRecords" class="text-3xl font-bold text-gray-800">0</p>
+                    <div class="mt-3 h-2 bg-green-500/20 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-1000" style="width: 82%;"></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="stat-card rounded-2xl p-6 hover-scale">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-calendar text-purple-600 text-xl"></i>
+            <!-- Tarjeta Periodos -->
+            <div class="stat-card card-3d shine-effect rounded-2xl p-6" data-aos="fade-up" data-aos-delay="200">
+                <div class="card-3d-inner">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-14 h-14 bg-purple-500/20 rounded-xl flex items-center justify-center glow-pulse" style="--glow-color: rgba(168, 85, 247, 0.5);">
+                            <lord-icon src="https://cdn.lordicon.com/abfverha.json" trigger="hover" colors="primary:#a855f7" style="width:36px;height:36px"></lord-icon>
+                        </div>
+                        <span class="badge-new" style="background: linear-gradient(135deg, #a855f7, #7c3aed);">+15%</span>
                     </div>
-                    <div class="text-purple-600 text-sm font-medium">+15%</div>
-                </div>
-                <p class="text-white/70 text-sm mb-1">Periodos</p>
-                <p id="statPeriods" class="text-3xl font-bold text-white">0</p>
-                <div class="mt-3 h-1 bg-purple-500/30 rounded-full overflow-hidden">
-                    <div class="h-full bg-purple-500 rounded-full" style="width: 68%;"></div>
+                    <p class="text-gray-500 text-sm mb-1 font-medium">Periodos</p>
+                    <p id="statPeriods" class="text-3xl font-bold text-gray-800">0</p>
+                    <div class="mt-3 h-2 bg-purple-500/20 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-1000" style="width: 68%;"></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="stat-card rounded-2xl p-6 hover-scale">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-yen-sign text-orange-600 text-xl"></i>
+            <!-- Tarjeta Total Neto -->
+            <div class="stat-card card-3d shine-effect rounded-2xl p-6" data-aos="fade-up" data-aos-delay="300">
+                <div class="card-3d-inner">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-14 h-14 bg-orange-500/20 rounded-xl flex items-center justify-center glow-pulse" style="--glow-color: rgba(249, 115, 22, 0.5);">
+                            <lord-icon src="https://cdn.lordicon.com/qhviklyi.json" trigger="hover" colors="primary:#f97316" style="width:36px;height:36px"></lord-icon>
+                        </div>
+                        <span class="badge-new" style="background: linear-gradient(135deg, #f97316, #ea580c);">+5%</span>
                     </div>
-                    <div class="text-orange-600 text-sm font-medium">+5%</div>
-                </div>
-                <p class="text-white/70 text-sm mb-1">Total Neto</p>
-                <p id="statNetPay" class="text-3xl font-bold text-white">¥0</p>
-                <div class="mt-3 h-1 bg-orange-500/30 rounded-full overflow-hidden">
-                    <div class="h-full bg-orange-500 rounded-full" style="width: 91%;"></div>
+                    <p class="text-gray-500 text-sm mb-1 font-medium">Total Neto</p>
+                    <p id="statNetPay" class="text-3xl font-bold text-gray-800">¥0</p>
+                    <div class="mt-3 h-2 bg-orange-500/20 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full transition-all duration-1000" style="width: 91%;"></div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -294,14 +571,18 @@
                     </button>
                 </div>
                 
-                <div id="dropZone" class="border-3 border-dashed border-white/30 rounded-2xl p-12 text-center cursor-pointer hover:border-white/50 hover:bg-white/5 transition-all duration-300">
+                <div id="dropZone" class="border-3 border-dashed border-white/30 rounded-2xl p-12 text-center cursor-pointer hover:border-white/50 hover:bg-white/5 transition-all duration-300 glow-pulse" data-aos="zoom-in">
                     <div class="flex flex-col items-center gap-4">
-                        <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center floating">
-                            <i class="fas fa-file-upload text-white text-3xl"></i>
+                        <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center floating shadow-2xl">
+                            <lord-icon src="https://cdn.lordicon.com/smwmetfi.json" trigger="loop" delay="2000" colors="primary:#ffffff,secondary:#ffffff" style="width:56px;height:56px"></lord-icon>
                         </div>
-                        <p class="text-white text-xl font-medium">ファイルをドラッグ＆ドロップ</p>
-                        <p class="text-white/90">o haz clic para seleccionar</p>
-                        <p class="text-white/90 text-sm mt-2">Formatos: .xlsm, .xlsx, .xls</p>
+                        <p class="text-white text-xl font-bold animated-gradient-text">ファイルをドラッグ＆ドロップ</p>
+                        <p class="text-white/90 text-lg">o haz clic para seleccionar</p>
+                        <div class="flex items-center gap-3 mt-2">
+                            <span class="px-3 py-1 bg-white/10 rounded-full text-white/80 text-sm">.xlsm</span>
+                            <span class="px-3 py-1 bg-white/10 rounded-full text-white/80 text-sm">.xlsx</span>
+                            <span class="px-3 py-1 bg-white/10 rounded-full text-white/80 text-sm">.xls</span>
+                        </div>
                     </div>
                     <input type="file" id="fileInput" multiple accept=".xlsm,.xlsx,.xls" class="hidden">
                 </div>
@@ -378,40 +659,52 @@
         <!-- Tab: Export -->
         <section id="section-export" class="tab-content hidden">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="glass-morphism rounded-2xl p-8 text-center hover-scale">
-                    <div class="w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <i class="fas fa-file-excel text-green-400 text-2xl"></i>
+                <!-- ALL出力 Card -->
+                <div class="glass-morphism card-3d shine-effect rounded-2xl p-8 text-center" data-aos="fade-up" data-aos-delay="0">
+                    <div class="card-3d-inner">
+                        <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg glow-pulse" style="--glow-color: rgba(34, 197, 94, 0.4);">
+                            <lord-icon src="https://cdn.lordicon.com/yqzmiobz.json" trigger="hover" colors="primary:#ffffff,secondary:#ffffff" style="width:48px;height:48px"></lord-icon>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">ALL出力</h3>
+                        <span class="badge-new mb-4 inline-block" style="background: linear-gradient(135deg, #22c55e, #16a34a);">Excel</span>
+                        <p class="text-white/80 mb-6">Todos los datos consolidados en un archivo</p>
+                        <button onclick="exportAll(); triggerConfetti();" class="btn-ripple w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-semibold hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3">
+                            <lord-icon src="https://cdn.lordicon.com/ternnbni.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px"></lord-icon>
+                            Descargar Excel
+                        </button>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">ALL出力</h3>
-                    <p class="text-white/70 mb-6">Todos los datos consolidados</p>
-                    <button onclick="exportAll()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
-                        <i class="fas fa-download"></i>
-                        Descargar Excel
-                    </button>
                 </div>
 
-                <div class="glass-morphism rounded-2xl p-8 text-center hover-scale">
-                    <div class="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <i class="fas fa-calendar-alt text-purple-400 text-2xl"></i>
+                <!-- 月別分割 Card -->
+                <div class="glass-morphism card-3d shine-effect rounded-2xl p-8 text-center" data-aos="fade-up" data-aos-delay="100">
+                    <div class="card-3d-inner">
+                        <div class="w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg glow-pulse" style="--glow-color: rgba(168, 85, 247, 0.4);">
+                            <lord-icon src="https://cdn.lordicon.com/wmlleaaf.json" trigger="hover" colors="primary:#ffffff,secondary:#ffffff" style="width:48px;height:48px"></lord-icon>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">月別分割</h3>
+                        <span class="badge-new mb-4 inline-block" style="background: linear-gradient(135deg, #a855f7, #ec4899);">Mensual</span>
+                        <p class="text-white/80 mb-6">Hojas separadas por cada mes</p>
+                        <button onclick="exportMonthly(); triggerConfetti();" class="btn-ripple w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-4 rounded-xl font-semibold hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3">
+                            <lord-icon src="https://cdn.lordicon.com/ternnbni.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px"></lord-icon>
+                            Descargar Excel
+                        </button>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">月別分割</h3>
-                    <p class="text-white/70 mb-6">Hojas separadas por mes</p>
-                    <button onclick="exportMonthly()" class="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
-                        <i class="fas fa-download"></i>
-                        Descargar Excel
-                    </button>
                 </div>
 
-                <div class="glass-morphism rounded-2xl p-8 text-center hover-scale">
-                    <div class="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <i class="fas fa-file-invoice text-orange-400 text-2xl"></i>
+                <!-- 賃金台帳 Card -->
+                <div class="glass-morphism card-3d shine-effect rounded-2xl p-8 text-center" data-aos="fade-up" data-aos-delay="200">
+                    <div class="card-3d-inner">
+                        <div class="w-20 h-20 bg-gradient-to-br from-orange-400 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg glow-pulse" style="--glow-color: rgba(249, 115, 22, 0.4);">
+                            <lord-icon src="https://cdn.lordicon.com/puvaffet.json" trigger="hover" colors="primary:#ffffff,secondary:#ffffff" style="width:48px;height:48px"></lord-icon>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">賃金台帳</h3>
+                        <span class="badge-new mb-4 inline-block" style="background: linear-gradient(135deg, #f97316, #ef4444);">ZIP</span>
+                        <p class="text-white/80 mb-6">Un archivo por cada empleado</p>
+                        <button onclick="exportChingin(); triggerConfetti();" class="btn-ripple w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-4 rounded-xl font-semibold hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3">
+                            <lord-icon src="https://cdn.lordicon.com/zyzoecaw.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px"></lord-icon>
+                            Descargar ZIP
+                        </button>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">賃金台帳</h3>
-                    <p class="text-white/70 mb-6">Un archivo por empleado</p>
-                    <button onclick="exportChingin()" class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
-                        <i class="fas fa-file-archive"></i>
-                        Descargar ZIP
-                    </button>
                 </div>
             </div>
         </section>
@@ -891,8 +1184,103 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             loadStats();
+
+            // Inicializar AOS (Animate On Scroll)
+            AOS.init({
+                duration: 800,
+                easing: 'ease-out-cubic',
+                once: true,
+                offset: 50
+            });
+
+            // Crear partículas flotantes
+            createParticles();
+
+            // Efecto de typing en el título
+            animateNumbers();
+
             showNotification('🚀 賃金台帳 Generator v4.1 PRO listo', 'success');
         });
+
+        // Crear partículas decorativas
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#06b6d4', '#22c55e'];
+
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.cssText = `
+                    left: ${Math.random() * 100}%;
+                    width: ${Math.random() * 10 + 5}px;
+                    height: ${Math.random() * 10 + 5}px;
+                    background: ${colors[Math.floor(Math.random() * colors.length)]};
+                    border-radius: 50%;
+                    animation-delay: ${Math.random() * 20}s;
+                    animation-duration: ${Math.random() * 15 + 15}s;
+                `;
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Animar números con efecto de conteo
+        function animateNumbers() {
+            const counters = document.querySelectorAll('[id^="stat"]');
+            counters.forEach(counter => {
+                const target = parseInt(counter.textContent.replace(/[^0-9]/g, '')) || 0;
+                if (target > 0) {
+                    animateValue(counter, 0, target, 1500);
+                }
+            });
+        }
+
+        function animateValue(element, start, end, duration) {
+            const startTime = performance.now();
+            const prefix = element.textContent.includes('¥') ? '¥' : '';
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(start + (end - start) * easeProgress);
+                element.textContent = prefix + current.toLocaleString();
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            requestAnimationFrame(update);
+        }
+
+        // Efecto confetti para celebraciones
+        function triggerConfetti() {
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#22c55e', '#f97316'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.cssText = `
+                    left: ${Math.random() * 100}%;
+                    top: -10px;
+                    width: ${Math.random() * 10 + 5}px;
+                    height: ${Math.random() * 10 + 5}px;
+                    background: ${colors[Math.floor(Math.random() * colors.length)]};
+                    border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+                    animation: confettiFall ${Math.random() * 2 + 2}s linear forwards;
+                `;
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 4000);
+            }
+        }
+
+        // Añadir estilos de confetti dinámicamente
+        const confettiStyle = document.createElement('style');
+        confettiStyle.textContent = `
+            @keyframes confettiFall {
+                0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(confettiStyle);
     </script>
     
     <!-- Theme Selector -->
