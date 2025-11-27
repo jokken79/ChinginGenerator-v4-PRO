@@ -259,9 +259,38 @@
 
         <!-- Tab: Settings -->
         <section id="section-settings" class="tab-content hidden">
-            <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
                 <h2 class="text-lg font-semibold mb-4">⚙️ Configuración</h2>
                 <div id="settingsList" class="space-y-4"></div>
+            </div>
+            
+            <!-- Selector de Tema -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-lg font-semibold mb-4">🎨 Tema de Interfaz</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-rocket text-blue-600 mr-2"></i>
+                            <h3 class="font-semibold text-blue-800">Moderno</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">Diseño Glass Morphism con animaciones y efectos visuales modernos</p>
+                        <button onclick="switchToModern()" class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300">
+                            <i class="fas fa-rocket mr-2"></i>
+                            Cambiar a Moderno
+                        </button>
+                    </div>
+                    <div class="border rounded-lg p-4 bg-gray-50 border-gray-200">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-desktop text-gray-600 mr-2"></i>
+                            <h3 class="font-semibold text-gray-800">Clásico</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">Diseño tradicional y funcional, enfocado en la usabilidad</p>
+                        <div class="w-full bg-gray-300 text-gray-500 py-2 rounded-lg cursor-not-allowed text-center">
+                            <i class="fas fa-check mr-2"></i>
+                            Tema Actual
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- Sincronización de Empleados -->
@@ -1466,6 +1495,19 @@
             } catch (error) {
                 resultDiv.className = 'mt-4 p-4 bg-red-100 text-red-800 rounded-lg';
                 resultDiv.innerHTML = `<p>❌ ${error.message}</p>`;
+            }
+        }
+
+        // Función para cambiar al theme moderno
+        function switchToModern() {
+            if (confirm('¿Estás seguro de que quieres cambiar al tema moderno?\n\n' +
+                'El tema moderno incluye:\n' +
+                '• Diseño Glass Morphism con animaciones\n' +
+                '• Agentes Claude integrados\n' +
+                '• Temas claro/oscuro\n' +
+                '• Efectos visuales modernos\n\n' +
+                '¿Continuar?')) {
+                window.location.href = '/?enhanced=true';
             }
         }
 
