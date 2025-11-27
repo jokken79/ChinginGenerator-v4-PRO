@@ -57,9 +57,9 @@ class PerformanceCache:
             return len(self.cache)
 
 # Instancias globales
-employee_cache = PerformanceCache(ttl=600)  # 10 minutos para empleados
-company_cache = PerformanceCache(ttl=1800)  # 30 minutos para compañías
-stats_cache = PerformanceCache(ttl=60)  # 1 minuto para estadísticas
+employee_cache = PerformanceCache(ttl_seconds=600)  # 10 minutos para empleados
+company_cache = PerformanceCache(ttl_seconds=1800)  # 30 minutos para compañías
+stats_cache = PerformanceCache(ttl_seconds=60)  # 1 minuto para estadísticas
 
 def timed_cache(ttl_seconds: int = CACHE_TTL):
     """Decorador para caché con logging de tiempo"""
@@ -74,7 +74,7 @@ def timed_cache(ttl_seconds: int = CACHE_TTL):
             # Intentar obtener del cache
             cached_result = cache.get(cache_key)
             if cached_result is not None:
-                print(f"📦 CACHE HIT: {func.__name__}")
+                print(f"CACHE HIT: {func.__name__}")
                 return cached_result
             
             # Ejecutar función
@@ -86,7 +86,7 @@ def timed_cache(ttl_seconds: int = CACHE_TTL):
             cache.set(cache_key, result)
             
             if ENABLE_QUERY_LOGGING and duration > 0.1:
-                print(f"⏱️ SLOW QUERY: {func.__name__} took {duration:.3f}s")
+                print(f"SLOW QUERY: {func.__name__} took {duration:.3f}s")
             
             return result
         
@@ -163,12 +163,12 @@ def bulk_insert_payroll_records(records: List[Dict[str, Any]]) -> int:
             inserted_count = len(records)
             duration = time.time() - start_time
             
-            print(f"📊 BULK INSERT: {inserted_count} records in {duration:.3f}s")
+            print(f"BULK INSERT: {inserted_count} records in {duration:.3f}s")
             
             return inserted_count
             
     except Exception as e:
-        print(f"❌ BULK INSERT ERROR: {e}")
+        print(f"BULK INSERT ERROR: {e}")
         return 0
 
 @timed_cache(ttl_seconds=600)
@@ -196,7 +196,7 @@ def get_all_employees_cached() -> List[Dict[str, Any]]:
             return employees
             
     except Exception as e:
-        print(f"❌ get_all_employees_cached ERROR: {e}")
+        print(f"get_all_employees_cached ERROR: {e}")
         return []
 
 @timed_cache(ttl_seconds=1800)
@@ -234,7 +234,7 @@ def get_dispatch_companies_cached() -> List[Dict[str, Any]]:
             return companies
             
     except Exception as e:
-        print(f"❌ get_dispatch_companies_cached ERROR: {e}")
+        print(f"get_dispatch_companies_cached ERROR: {e}")
         return []
 
 @timed_cache(ttl_seconds=60)
@@ -280,8 +280,27 @@ def get_statistics_cached() -> Dict[str, Any]:
             return stats
             
     except Exception as e:
-        print(f"❌ get_statistics_cached ERROR: {e}")
+        print(f"get_statistics_cached ERROR: {e}")
         return {}
+
+@timed_cache(ttl_seconds=300)
+def get_periods_cached() -> List[str]:
+    """
+    Obtener períodos únicos con cache
+    Evita repetir queries frecuentes
+    """
+    try:
+        with sqlite3.connect('chingin_data.db') as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT DISTINCT period FROM payroll_records ORDER BY period DESC")
+            periods = [row[0] for row in cursor.fetchall() if row[0]]
+            
+            return periods
+            
+    except Exception as e:
+        print(f"get_periods_cached ERROR: {e}")
+        return []
 
 def optimize_database_indexes():
     """
@@ -319,13 +338,13 @@ def optimize_database_indexes():
             
             for index_sql in indexes:
                 cursor.execute(index_sql)
-                print(f"✅ Index created/verified: {index_sql.split('idx_')[1].split(' ')[0]}")
+                print(f"Index created/verified: {index_sql.split('idx_')[1].split(' ')[0]}")
             
             conn.commit()
-            print("🚀 Database optimization completed")
+            print("Database optimization completed")
             
     except Exception as e:
-        print(f"❌ Database optimization ERROR: {e}")
+        print(f"Database optimization ERROR: {e}")
 
 def get_performance_metrics() -> Dict[str, Any]:
     """Obtener métricas de performance del sistema"""
@@ -371,7 +390,7 @@ def get_database_info() -> Dict[str, Any]:
             }
             
     except Exception as e:
-        print(f"❌ get_database_info ERROR: {e}")
+        print(f"get_database_info ERROR: {e}")
         return {}
 
 def get_pragma(conn, pragma_name):
@@ -388,28 +407,28 @@ def clear_all_caches():
     employee_cache.clear()
     company_cache.clear()
     stats_cache.clear()
-    print("🧹 All caches cleared")
+    print("All caches cleared")
 
 if __name__ == "__main__":
-    print("🚀 Performance Optimization Module")
+    print("Performance Optimization Module")
     
     # Optimizar base de datos
-    print("\n📊 Optimizing database indexes...")
+    print("\nOptimizing database indexes...")
     optimize_database_indexes()
     
     # Test cache functions
-    print("\n🧪 Testing cache functions...")
+    print("\nTesting cache functions...")
     
     # Test empleados cache
     employees = get_all_employees_cached()
-    print(f"✅ Employees cached: {len(employees)}")
+    print(f"Employees cached: {len(employees)}")
     
     # Test estadísticas cache
     stats = get_statistics_cached()
-    print(f"✅ Stats cached: {json.dumps(stats, indent=2)}")
+    print(f"Stats cached: {json.dumps(stats, indent=2)}")
     
     # Test métricas
     metrics = get_performance_metrics()
-    print(f"✅ Performance metrics: {json.dumps(metrics, indent=2)}")
+    print(f"Performance metrics: {json.dumps(metrics, indent=2)}")
     
-    print("\n🎉 Performance optimization complete!")
+    print("\nPerformance optimization complete!")

@@ -108,6 +108,8 @@ def create_distribution():
     
     # Copiar templates
     if os.path.exists("templates"):
+        if os.path.exists(dist_dir / "templates"):
+            shutil.rmtree(dist_dir / "templates")
         shutil.copytree("templates", dist_dir / "templates")
         print("[OK] Templates copiados")
     

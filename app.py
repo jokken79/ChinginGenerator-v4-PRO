@@ -46,10 +46,10 @@ try:
         get_performance_metrics
     )
     PERFORMANCE_ENABLED = True
-    print("✅ Optimizaciones de performance cargadas")
+    print("[OK] Optimizaciones de performance cargadas")
 except ImportError:
     PERFORMANCE_ENABLED = False
-    print("⚠️ Módulo de optimizaciones no encontrado, usando funciones originales")
+    print("ADVERTENCIA: Modulo de optimizaciones no encontrado, usando funciones originales")
 
 # Importar agentes Claude para análisis avanzado
 try:
@@ -62,10 +62,10 @@ try:
         ComplianceAgent
     )
     AGENTS_ENABLED = True
-    print("🤖 Agentes Claude Elite cargados y listos")
+    print("[OK] Agentes Claude Elite cargados y listos")
 except ImportError:
     AGENTS_ENABLED = False
-    print("⚠️ Agentes Claude no encontrados, análisis avanzado no disponible")
+    print("ADVERTENCIA: Agentes Claude no encontrados, analisis avanzado no disponible")
 
 # Configuración
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -97,11 +97,11 @@ async def enhanced_log_requests(request: Request, call_next):
 
     # Log mejorado con indicadores de cache
     if duration > 0.5:
-        print(f"⚠️ SLOW: {request.method} {request.url.path} took {duration:.2f}s")
+        print(f"[SLOW] {request.method} {request.url.path} took {duration:.2f}s")
     elif duration > 0.2:
-        print(f"⏱️ {request.method} {request.url.path} took {duration:.2f}s")
+        print(f"[NORMAL] {request.method} {request.url.path} took {duration:.2f}s")
     else:
-        print(f"✅ FAST: {request.method} {request.url.path} took {duration:.3f}s")
+        print(f"[FAST] {request.method} {request.url.path} took {duration:.3f}s")
 
     # Headers de debugging
     response.headers["X-Response-Time"] = f"{duration:.3f}s"
@@ -112,7 +112,8 @@ async def enhanced_log_requests(request: Request, call_next):
     return response
 
 # Static files y templates
-app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+if os.path.exists(os.path.join(BASE_DIR, "static")):
+    app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
@@ -1128,23 +1129,23 @@ async def startup():
     if PERFORMANCE_ENABLED:
         try:
             optimize_database_indexes()
-            print("✅ Base de datos optimizada con índices")
+            print("[OK] Base de datos optimizada con indices")
         except Exception as e:
-            print(f"⚠️ Error optimizando BD: {e}")
+            print(f"[ERROR] Error optimizando BD: {e}")
     
     # Limpiar archivos viejos al iniciar
     try:
         cleanup_old_files()
-        print("✅ Limpieza de archivos viejos completada")
+        print("[OK] Limpieza de archivos viejos completada")
     except Exception as e:
-        print(f"⚠️ Error en limpieza: {e}")
+        print(f"[ERROR] Error en limpieza: {e}")
     
-    print("✅ Base de datos inicializada")
-    print("✅ ChinginApp v4.1 PRO OPTIMIZADO listo!")
+    print("[OK] Base de datos inicializada")
+    print("[OK] ChinginApp v4.1 PRO OPTIMIZADO listo!")
     if PERFORMANCE_ENABLED:
-        print("🚀 Optimizaciones de performance activadas")
+        print("[OK] Optimizaciones de performance activadas")
     if AGENTS_ENABLED:
-        print("🤖 Agentes Claude Elite activados para análisis avanzado")
+        print("[OK] Agentes Claude Elite activados para analisis avanzado")
 
 def cleanup_old_files(days: int = 7, delete: bool = True):
     """Limpiar archivos viejos de uploads y outputs"""
@@ -1183,13 +1184,51 @@ def cleanup_old_files(days: int = 7, delete: bool = True):
                 print(f"Error processing {filepath}: {e}")
     
     if delete:
-        print(f"🗑️ Eliminados {deleted_count} archivos viejos")
+        print(f"[INFO] Eliminados {deleted_count} archivos viejos")
     else:
-        print(f"📋 Se eliminarían {deleted_count} archivos viejos")
+        print(f"[INFO] Se eliminarian {deleted_count} archivos viejos")
     
     return deleted_count
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8989)
+    import sys
+    import os
+    import socket
+    
+    # Configurar logging para ejecutable
+    if hasattr(sys, 'frozen') and getattr(sys, 'frozen', False):
+        # Estamos corriendo como ejecutable
+        import logging
+        
+        # Configurar logging básico sin caracteres especiales
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(levelname)s:%(name)s:%(message)s'
+        )
+        
+        # Buscar un puerto disponible
+        port = 8000
+        while port < 8100:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('localhost', port))
+                    break
+            except OSError:
+                port += 1
+        
+        print(f"[INFO] Iniciando servidor en puerto {port}")
+        
+        # Configurar uvicorn sin logging complejo
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=port,
+            access_log=False,
+            log_config=None,
+            log_level="critical"  # Solo errores críticos
+        )
+    else:
+        # Estamos corriendo como script normal
+        uvicorn.run(app, host="0.0.0.0", port=8000)
