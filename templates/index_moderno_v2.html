@@ -483,38 +483,111 @@
             <div class="glass-morphism rounded-2xl p-8 mb-6">
                 <h2 class="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
                     <i class="fas fa-file-invoice text-orange-500"></i>
-                    賃金台帳 - Generar por Empleado
+                    賃金台帳 - Generar por Empleado o Fábrica
                 </h2>
                 
+                <!-- Navegación por Fábrica/Empresa -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <div class="glass-morphism rounded-xl p-6">
-                        <label class="block text-primary font-medium mb-3 flex items-center gap-2">
-                            <i class="fas fa-search text-blue-500"></i>
-                            従業員番号 (ID)
-                        </label>
-                        <input type="text" id="employeeIdInput" placeholder="Ej: 504010" 
-                               class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-                               onkeypress="if(event.key==='Enter') searchEmployee()">
+                    <!-- 派遣社員 - Por Fábrica -->
+                    <div class="glass-morphism rounded-xl p-6 bg-blue-500/10">
+                        <h3 class="text-xl font-bold text-cyan-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-industry"></i>
+                            🏭 派遣社員 - Por Fábrica
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-primary font-medium mb-2 flex items-center gap-2">
+                                    <i class="fas fa-building text-blue-400"></i>
+                                    派遣先 (Fábrica)
+                                </label>
+                                <select id="companySelect" onchange="loadCompanyEmployees()" title="派遣先選択"
+                                        class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300">
+                                    <option value="">-- 選択してください --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-primary font-medium mb-2 flex items-center gap-2">
+                                    <i class="fas fa-user text-blue-400"></i>
+                                    従業員 (Empleado) - Individual
+                                </label>
+                                <select id="companyEmployeeSelect" onchange="selectCompanyEmployee()" title="従業員選択"
+                                        class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300" disabled>
+                                    <option value="">-- 先に派遣先を選択 --</option>
+                                </select>
+                            </div>
+                            <div class="pt-4 border-t border-white/20">
+                                <button onclick="generateAllByCompany()" id="btnGenerateAllCompany"
+                                        class="w-full bg-gradient-to-r from-blue-500 to-cyan-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed"
+                                        disabled>
+                                    <i class="fas fa-file-archive"></i>
+                                    📦 全員の賃金台帳を生成 (ZIP)
+                                </button>
+                                <p class="text-cyan-400 text-sm mt-2 text-center" id="companyEmployeeCount">--</p>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="glass-morphism rounded-xl p-6">
-                        <label class="block text-primary font-medium mb-3 flex items-center gap-2">
-                            <i class="fas fa-calendar text-cyan-500"></i>
-                            年度
-                        </label>
-                        <select id="yearSelect" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-300">
-                            <option value="2025">2025</option>
-                            <option value="2024">2024</option>
-                            <option value="2023">2023</option>
-                        </select>
+                    <!-- 請負社員 - 岡山工場 (Todos) -->
+                    <div class="glass-morphism rounded-xl p-6 bg-green-500/10">
+                        <h3 class="text-xl font-bold text-green-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-hard-hat"></i>
+                            🔧 請負社員 - 岡山工場
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-primary font-medium mb-2 flex items-center gap-2">
+                                    <i class="fas fa-users text-green-400"></i>
+                                    従業員 (Individual)
+                                </label>
+                                <select id="ukeoiEmployeeSelect" onchange="selectUkeoiEmployee()" title="請負従業員選択"
+                                        class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300">
+                                    <option value="">-- 従業員を選択 --</option>
+                                </select>
+                            </div>
+                            <div class="pt-4 border-t border-white/20">
+                                <button onclick="generateAllUkeoi()" id="btnGenerateAllUkeoi"
+                                        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+                                    <i class="fas fa-file-archive"></i>
+                                    📦 請負社員 全員の賃金台帳を生成 (ZIP)
+                                </button>
+                                <p class="text-green-400 text-sm mt-2 text-center" id="ukeoiEmployeeCount">--</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="flex gap-4">
-                    <button onclick="searchEmployee()" class="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
-                        <i class="fas fa-search"></i>
-                        🔍 検索 Buscar
-                    </button>
+                <!-- Búsqueda directa por ID -->
+                <div class="glass-morphism rounded-xl p-6 border-t border-white/20">
+                    <p class="text-secondary mb-4 flex items-center gap-2">
+                        <i class="fas fa-search text-cyan-400"></i>
+                        または従業員番号で直接検索:
+                    </p>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+                        <div class="lg:col-span-1">
+                            <label class="block text-primary font-medium mb-2 flex items-center gap-2">
+                                <i class="fas fa-id-badge text-blue-400"></i>
+                                従業員番号 (ID)
+                            </label>
+                            <input type="text" id="employeeIdInput" placeholder="Ej: 504010"
+                                   class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                                   onkeypress="if(event.key==='Enter') searchEmployee()">
+                        </div>
+                        <div>
+                            <label class="block text-primary font-medium mb-2 flex items-center gap-2">
+                                <i class="fas fa-calendar text-cyan-400"></i>
+                                年度
+                            </label>
+                            <select id="yearSelect" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-300">
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                                <option value="2023">2023</option>
+                            </select>
+                        </div>
+                        <button onclick="searchEmployee()" class="bg-gradient-to-r from-blue-500 to-cyan-600 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+                            <i class="fas fa-search"></i>
+                            🔍 検索 Buscar
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -548,6 +621,30 @@
                         </div>
                     </div>
 
+                    <!-- Selectores de Formato y Tipo de Salida -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-primary font-medium mb-2 flex items-center gap-2">
+                                <i class="fas fa-file-alt text-blue-400"></i>
+                                📋 Formato de Template
+                            </label>
+                            <select id="chinginFormat" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300">
+                                <option value="b">Formato B - Detallado (横 12ヶ月 詳細)</option>
+                                <option value="c">Formato C - Simplificado (横 12ヶ月 簡易)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-primary font-medium mb-2 flex items-center gap-2">
+                                <i class="fas fa-file-export text-cyan-400"></i>
+                                📄 Tipo de Salida
+                            </label>
+                            <select id="chinginOutputType" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-300">
+                                <option value="excel">Excel (.xlsx)</option>
+                                <option value="pdf">PDF (.pdf)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="flex gap-4">
                         <button onclick="generateChingin()" class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
                             <i class="fas fa-download"></i>
@@ -557,6 +654,49 @@
                             <i class="fas fa-eye"></i>
                             👁️ プレビュー Preview
                         </button>
+                    </div>
+                </div>
+
+                <!-- Vista previa de datos -->
+                <div id="previewSection" class="hidden">
+                    <div class="glass-morphism rounded-2xl p-8">
+                        <h3 class="text-xl font-bold text-primary mb-6 flex items-center gap-3">
+                            <i class="fas fa-chart-bar text-cyan-400"></i>
+                            📊 Vista Previa de Datos
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <div class="glass-morphism rounded-xl overflow-hidden">
+                                <table class="w-full">
+                                    <thead class="bg-white/20">
+                                        <tr>
+                                            <th class="px-6 py-4 text-left text-primary font-semibold">月</th>
+                                            <th class="px-6 py-4 text-center text-primary font-semibold">出勤日数</th>
+                                            <th class="px-6 py-4 text-center text-primary font-semibold">実働時間</th>
+                                            <th class="px-6 py-4 text-center text-primary font-semibold">残業時間</th>
+                                            <th class="px-6 py-4 text-right text-primary font-semibold">基本給</th>
+                                            <th class="px-6 py-4 text-right text-primary font-semibold">残業手当</th>
+                                            <th class="px-6 py-4 text-right text-primary font-semibold">総支給額</th>
+                                            <th class="px-6 py-4 text-right text-primary font-semibold">控除合計</th>
+                                            <th class="px-6 py-4 text-right text-primary font-bold">差引支給額</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="previewTable" class="divide-y divide-white/10"></tbody>
+                                    <tfoot class="bg-white/10 font-bold">
+                                        <tr>
+                                            <td class="px-6 py-4 text-primary">合計</td>
+                                            <td class="px-6 py-4 text-center text-primary" id="totalWorkDays">-</td>
+                                            <td class="px-6 py-4 text-center text-primary" id="totalWorkHours">-</td>
+                                            <td class="px-6 py-4 text-center text-primary" id="totalOvertimeHours">-</td>
+                                            <td class="px-6 py-4 text-right text-primary" id="totalBasePay">-</td>
+                                            <td class="px-6 py-4 text-right text-primary" id="totalOvertimePay">-</td>
+                                            <td class="px-6 py-4 text-right text-primary" id="totalPay">-</td>
+                                            <td class="px-6 py-4 text-right text-primary" id="totalDeduction">-</td>
+                                            <td class="px-6 py-4 text-right text-green-400" id="totalNetPay">-</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1200,6 +1340,9 @@
         }
 
         // Employee search
+        let currentEmployee = null;
+        let employeeDataYear = null;
+
         async function searchEmployee() {
             const employeeId = document.getElementById('employeeIdInput').value.trim();
             if (!employeeId) {
@@ -1207,16 +1350,32 @@
                 return;
             }
 
+            document.getElementById('employeeResult').classList.add('hidden');
+            document.getElementById('employeeNotFound').classList.add('hidden');
+            document.getElementById('previewSection').classList.add('hidden');
+
             try {
                 const response = await fetch(`/api/employee/${employeeId}`);
                 const data = await response.json();
 
                 if (data.found) {
+                    currentEmployee = data;
+
+                    // Extraer el año de los periodos del empleado
+                    if (data.periods && data.periods.length > 0) {
+                        // Los períodos vienen en formato "YYYY-MM" (ej: "2025-10")
+                        const firstPeriod = data.periods[0];
+                        employeeDataYear = parseInt(firstPeriod.split('-')[0]);
+                    } else {
+                        employeeDataYear = new Date().getFullYear();
+                    }
+
                     document.getElementById('empName').textContent = data.name_roman || data.name_jp || '-';
                     document.getElementById('empId').textContent = `ID: ${data.employee_id}`;
                     document.getElementById('empDispatch').textContent = data.dispatch || '-';
                     document.getElementById('empRecords').textContent = data.records || 0;
-                    document.getElementById('empPeriods').textContent = data.periods ? data.periods.slice(0, 3).join(', ') : '-';
+                    document.getElementById('empPeriods').textContent =
+                        data.periods ? data.periods.slice(0, 3).join(', ') + (data.periods.length > 3 ? '...' : '') : '-';
                     document.getElementById('empKana').textContent = data.name_jp || '-';
                     document.getElementById('empRoman').textContent = data.name_roman || '-';
 
@@ -1235,25 +1394,107 @@
             }
         }
 
-        function generateChingin() {
-            const employeeId = document.getElementById('employeeIdInput').value.trim();
-            if (!employeeId) {
-                showNotification('Por favor busca un empleado primero', 'error');
-                return;
+        async function previewChingin() {
+            if (!currentEmployee) return;
+
+            // Usar el año extraído de los datos del empleado
+            const year = employeeDataYear || new Date().getFullYear();
+            
+            try {
+                const response = await fetch(`/api/employee/${currentEmployee.employee_id}/preview?year=${year}`);
+                if (!response.ok) {
+                    throw new Error('No hay datos para este año');
+                }
+                const data = await response.json();
+                
+                // Llenar tabla de preview
+                const tbody = document.getElementById('previewTable');
+                let html = '';
+                let totals = { workDays: 0, workHours: 0, overtimeHours: 0, basePay: 0, overtimePay: 0, totalPay: 0, deduction: 0, netPay: 0 };
+                
+                const monthNames = ['', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                
+                // Función para formatear horas decimales
+                const formatHours = (h) => {
+                    if (!h) return '0';
+                    return Math.round(h * 10) / 10;  // Redondear a 1 decimal
+                };
+                
+                for (let month = 1; month <= 12; month++) {
+                    const m = data.data_by_month[month];
+                    if (m) {
+                        html += `
+                            <tr class="hover:bg-white/5 transition-colors duration-200">
+                                <td class="px-6 py-4 text-primary font-medium">${monthNames[month]}</td>
+                                <td class="px-6 py-4 text-center text-white">${m.work_days || 0}</td>
+                                <td class="px-6 py-4 text-center text-white">${formatHours(m.work_hours)}h</td>
+                                <td class="px-6 py-4 text-center text-white">${formatHours(m.overtime_hours)}h</td>
+                                <td class="px-6 py-4 text-right text-white">¥${(m.base_pay || 0).toLocaleString()}</td>
+                                <td class="px-6 py-4 text-right text-white">¥${(m.overtime_pay || 0).toLocaleString()}</td>
+                                <td class="px-6 py-4 text-right text-white">¥${(m.total_pay || 0).toLocaleString()}</td>
+                                <td class="px-6 py-4 text-right text-white">¥${(m.deduction_total || 0).toLocaleString()}</td>
+                                <td class="px-6 py-4 text-right text-white font-bold text-green-400">¥${(m.net_pay || 0).toLocaleString()}</td>
+                            </tr>
+                        `;
+                        totals.workDays += m.work_days || 0;
+                        totals.workHours += m.work_hours || 0;
+                        totals.overtimeHours += m.overtime_hours || 0;
+                        totals.basePay += m.base_pay || 0;
+                        totals.overtimePay += m.overtime_pay || 0;
+                        totals.totalPay += m.total_pay || 0;
+                        totals.deduction += m.deduction_total || 0;
+                        totals.netPay += m.net_pay || 0;
+                    } else {
+                        html += `
+                            <tr class="text-gray-400">
+                                <td class="px-6 py-4 text-primary font-medium">${monthNames[month]}</td>
+                                <td class="px-6 py-4 text-center">-</td>
+                                <td class="px-6 py-4 text-center">-</td>
+                                <td class="px-6 py-4 text-center">-</td>
+                                <td class="px-6 py-4 text-right">-</td>
+                                <td class="px-6 py-4 text-right">-</td>
+                                <td class="px-6 py-4 text-right">-</td>
+                                <td class="px-6 py-4 text-right">-</td>
+                                <td class="px-6 py-4 text-right">-</td>
+                            </tr>
+                        `;
+                    }
+                }
+                
+                tbody.innerHTML = html;
+                
+                // Totales (redondear horas a 1 decimal)
+                document.getElementById('totalWorkDays').textContent = totals.workDays;
+                document.getElementById('totalWorkHours').textContent = (Math.round(totals.workHours * 10) / 10) + 'h';
+                document.getElementById('totalOvertimeHours').textContent = (Math.round(totals.overtimeHours * 10) / 10) + 'h';
+                document.getElementById('totalBasePay').textContent = '¥' + totals.basePay.toLocaleString();
+                document.getElementById('totalOvertimePay').textContent = '¥' + totals.overtimePay.toLocaleString();
+                document.getElementById('totalPay').textContent = '¥' + totals.totalPay.toLocaleString();
+                document.getElementById('totalDeduction').textContent = '¥' + totals.deduction.toLocaleString();
+                document.getElementById('totalNetPay').textContent = '¥' + totals.netPay.toLocaleString();
+                
+                document.getElementById('previewSection').classList.remove('hidden');
+                showNotification('👁️ Vista previa cargada', 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error al cargar preview: ' + error.message, 'error');
             }
-            const year = document.getElementById('yearSelect').value;
-            showNotification('📥 Generando 賃金台帳...', 'info');
-            window.location.href = `/api/employee/${employeeId}/chingin?year=${year}`;
         }
 
-        function previewChingin() {
-            const employeeId = document.getElementById('employeeIdInput').value.trim();
-            if (!employeeId) {
-                showNotification('Por favor busca un empleado primero', 'error');
+        function generateChingin() {
+            if (!currentEmployee) {
+                showNotification('⚠️ 従業員を選択してください / Por favor, busca un empleado primero', 'error');
                 return;
             }
-            showNotification('👁️ Cargando vista previa...', 'info');
-            // Implementation for preview would go here
+
+            // Usar el año extraído de los datos del empleado en lugar del yearSelect
+            const year = employeeDataYear || new Date().getFullYear();
+            const format = document.getElementById('chinginFormat').value;
+            const outputType = document.getElementById('chinginOutputType').value;
+
+            console.log(`Generando 賃金台帳: ID=${currentEmployee.employee_id}, Year=${year}, Format=${format}, Output=${outputType}`);
+            showNotification('📥 Generando 賃金台帳...', 'info');
+            window.location.href = `/api/employee/${currentEmployee.employee_id}/chingin-v2?year=${year}&format=${format}&output_type=${outputType}`;
         }
 
         function clearAllData() {
@@ -1276,6 +1517,205 @@
         function toggleThemeSelector() {
             // This function can be used to show/hide theme selector if needed
             showNotification('🎨 Usa la pestaña Configuración para cambiar temas', 'info');
+        }
+
+        // ========================================
+        // 賃金台帳 - Navegación por Fábrica/Empresa
+        // ========================================
+        
+        // Cargar fábricas (派遣先) al cargar la página
+        async function loadDispatchCompanies() {
+            try {
+                const response = await fetch('/api/dispatch-companies');
+                const data = await response.json();
+                
+                const select = document.getElementById('companySelect');
+                select.innerHTML = '<option value="">-- 選択してください --</option>';
+                
+                data.companies.forEach(company => {
+                    const opt = document.createElement('option');
+                    opt.value = company.name;
+                    opt.textContent = `${company.name} (${company.count}人)`;
+                    select.appendChild(opt);
+                });
+                
+                // También cargar 請負社員 (todos)
+                await loadUkeoiEmployees();
+            } catch (error) {
+                console.error('Error cargando fábricas:', error);
+                showNotification('Error al cargar fábricas', 'error');
+            }
+        }
+        
+        // Cargar todos los 請負社員
+        async function loadUkeoiEmployees() {
+            try {
+                const response = await fetch('/api/ukeoi-employees');
+                const data = await response.json();
+                
+                const select = document.getElementById('ukeoiEmployeeSelect');
+                const countLabel = document.getElementById('ukeoiEmployeeCount');
+                
+                select.innerHTML = '<option value="">-- 従業員を選択 (個別) --</option>';
+                
+                if (data.employees) {
+                    data.employees.forEach(emp => {
+                        const opt = document.createElement('option');
+                        opt.value = emp.employee_id;
+                        opt.textContent = `${emp.employee_id} - ${emp.name}`;
+                        select.appendChild(opt);
+                    });
+                    countLabel.textContent = `${data.employees.length}人の請負社員`;
+                }
+            } catch (error) {
+                console.error('Error cargando 請負社員:', error);
+                showNotification('Error al cargar empleados 請負', 'error');
+            }
+        }
+        
+        // Seleccionar 請負社員 individual
+        function selectUkeoiEmployee() {
+            const empId = document.getElementById('ukeoiEmployeeSelect').value;
+            if (empId) {
+                document.getElementById('employeeIdInput').value = empId;
+                searchEmployee();
+            }
+        }
+        
+        // Generar todos los 請負社員
+        async function generateAllUkeoi() {
+            const year = document.getElementById('yearSelect').value;
+            const btn = document.getElementById('btnGenerateAllUkeoi');
+            const originalText = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>生成中...';
+            
+            try {
+                const response = await fetch(`/api/chingin/all-ukeoi?year=${year}`);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Error al generar');
+                }
+                
+                // Descargar el ZIP
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `賃金台帳_請負社員_岡山工場_${year}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i>✅ 完了!';
+                showNotification('✅ 請負社員 completado exitosamente', 'success');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('エラー: ' + error.message, 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        // Cargar empleados de una fábrica
+        async function loadCompanyEmployees() {
+            const company = document.getElementById('companySelect').value;
+            const select = document.getElementById('companyEmployeeSelect');
+            const btnGenerate = document.getElementById('btnGenerateAllCompany');
+            const countLabel = document.getElementById('companyEmployeeCount');
+            
+            if (!company) {
+                select.innerHTML = '<option value="">-- 先に派遣先を選択 --</option>';
+                select.disabled = true;
+                btnGenerate.disabled = true;
+                countLabel.textContent = '--';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/employees-by-company/${encodeURIComponent(company)}`);
+                const data = await response.json();
+                
+                select.innerHTML = '<option value="">-- 従業員を選択 (個別) --</option>';
+                data.employees.forEach(emp => {
+                    const opt = document.createElement('option');
+                    opt.value = emp.id;
+                    opt.textContent = `${emp.id} - ${emp.name}`;
+                    select.appendChild(opt);
+                });
+                select.disabled = false;
+                
+                // Habilitar botón de generar todos
+                btnGenerate.disabled = data.count === 0;
+                countLabel.textContent = `${data.count}人の従業員`;
+            } catch (error) {
+                console.error('Error cargando empleados:', error);
+                showNotification('Error al cargar empleados de la fábrica', 'error');
+            }
+        }
+        
+        // Seleccionar empleado de fábrica
+        function selectCompanyEmployee() {
+            const empId = document.getElementById('companyEmployeeSelect').value;
+            if (empId) {
+                document.getElementById('employeeIdInput').value = empId;
+                searchEmployee();
+            }
+        }
+        
+        // Generar 賃金台帳 de todos los empleados de una fábrica
+        async function generateAllByCompany() {
+            const company = document.getElementById('companySelect').value;
+            const year = document.getElementById('yearSelect').value;
+            
+            if (!company) {
+                showNotification('派遣先を選択してください', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('btnGenerateAllCompany');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>生成中...';
+            
+            try {
+                const response = await fetch(`/api/chingin/by-company/${encodeURIComponent(company)}?year=${year}`);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Error al generar');
+                }
+                
+                // Descargar el ZIP
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `賃金台帳_${company}_${year}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i>✅ 完了!';
+                showNotification(`✅ 賃金台帳 de ${company} completado`, 'success');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('エラー: ' + error.message, 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
 
         // ========================================
@@ -1406,6 +1846,8 @@
             applyThemes();
             loadStats();
             loadEmployeeStats();
+            // Cargar las fábricas cuando se carga la página
+            loadDispatchCompanies();
             showNotification('🚀 賃金台帳 Generator v4.1 PRO Enhanced listo', 'success');
         });
     </script>
