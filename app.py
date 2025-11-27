@@ -15,6 +15,7 @@ import json
 import asyncio
 from datetime import datetime
 from typing import List
+from urllib.parse import quote
 
 from excel_processor import ExcelProcessor
 from database import (
@@ -28,6 +29,7 @@ from database import (
     get_dispatch_companies, get_ukeoi_job_types,
     get_employees_by_company, get_employees_by_job_type
 )
+import time
 
 # Configuración
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +45,21 @@ app = FastAPI(
     description="Sistema de Nóminas Japonesas con Base de Datos",
     version="4.0.0"
 )
+
+# Middleware para logging de performance
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+
+    # Log solo si toma más de 500ms
+    if duration > 0.5:
+        print(f"⚠️ SLOW: {request.method} {request.url.path} took {duration:.2f}s")
+    elif duration > 0.2:
+        print(f"⏱️ {request.method} {request.url.path} took {duration:.2f}s")
+
+    return response
 
 # Static files y templates
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -159,7 +176,7 @@ async def export_chingin():
 
 @app.get("/api/employee/{employee_id}")
 async def search_employee(employee_id: str):
-    """Buscar información de un empleado por ID"""
+    """Buscar informacion de un empleado por ID"""
     result = processor.search_employee(employee_id)
     return JSONResponse(result)
 
@@ -222,11 +239,12 @@ async def generate_chingin_by_company(company_name: str, year: int = None):
         raise HTTPException(status_code=404, detail=f"No se pudieron generar archivos para {company}")
     
     zip_buffer.seek(0)
-    
+
+    filename_encoded = quote(f"賃金台帳_{company}_{year}.zip")
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=賃金台帳_{company}_{year}.zip"}
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename_encoded}"}
     )
 
 
@@ -269,38 +287,38 @@ async def generate_chingin_by_job_type(job_type: str, year: int = None):
         raise HTTPException(status_code=404, detail=f"No se pudieron generar archivos para {jt}")
     
     zip_buffer.seek(0)
-    
+
+    filename_encoded = quote(f"賃金台帳_{jt}_{year}.zip")
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=賃金台帳_{jt}_{year}.zip"}
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename_encoded}"}
     )
 
 
 @app.get("/api/chingin/all-ukeoi")
 async def generate_chingin_all_ukeoi(year: int = None):
-    """Generar 賃金台帳 para todos los 請負社員 (岡山工場) en ZIP"""
+    """Generar 賃金台帳 para TODOS los empleados (派遣社員 + 請負社員) en ZIP"""
     import zipfile
     import io
-    
+
     if year is None:
         year = datetime.now().year
-    
-    # Obtener todos los 請負社員
-    ukeoi_data = get_all_ukeoi_employees()
-    employees = ukeoi_data.get('employees', [])
-    
+
+    # Obtener TODOS los empleados (tanto 派遣社員 como 請負社員)
+    employees = get_all_employees()
+
     if not employees:
-        raise HTTPException(status_code=404, detail="No hay 請負社員 registrados")
-    
+        raise HTTPException(status_code=404, detail="No hay empleados registrados")
+
     # Crear ZIP en memoria
     zip_buffer = io.BytesIO()
     generated_count = 0
-    
+
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for emp in employees:
             emp_id = emp.get('employee_id')
-            emp_name = emp.get('name', '')
+            emp_name = emp.get('name_jp', emp.get('name_roman', ''))
             try:
                 result = processor.generate_chingin_print(emp_id, year)
                 if result.get("output_path") and os.path.exists(result["output_path"]):
@@ -311,16 +329,87 @@ async def generate_chingin_all_ukeoi(year: int = None):
             except Exception as e:
                 print(f"Error generando para {emp_id}: {e}")
                 continue
-    
+
     if generated_count == 0:
-        raise HTTPException(status_code=404, detail="No se pudieron generar archivos para 請負社員")
-    
+        raise HTTPException(status_code=404, detail="No se pudieron generar archivos")
+
     zip_buffer.seek(0)
-    
+
+    filename_encoded = quote(f"賃金台帳_全員_{year}.zip")
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=賃金台帳_請負社員_岡山工場_{year}.zip"}
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename_encoded}"}
+    )
+
+
+@app.get("/api/employee/{employee_id}/chingin-v2")
+async def generate_employee_chingin_v2(
+    employee_id: str,
+    year: int = None,
+    format: str = "b",  # "b" o "c"
+    output_type: str = "excel"  # "excel" o "pdf"
+):
+    """
+    Generar 賃金台帳 usando Templates B o C, con opcion Excel o PDF
+
+    Args:
+        employee_id: ID del empleado
+        year: Ano (default: ano actual)
+        format: "b" para Template B (detallado) o "c" para Template C (simplificado)
+        output_type: "excel" para archivo Excel o "pdf" para convertir a PDF
+    """
+    if year is None:
+        year = datetime.now().year
+
+    # Validar parametros
+    if format not in ["b", "c"]:
+        raise HTTPException(status_code=400, detail="Formato debe ser 'b' o 'c'")
+    if output_type not in ["excel", "pdf"]:
+        raise HTTPException(status_code=400, detail="output_type debe ser 'excel' o 'pdf'")
+
+    # Generar archivo Excel segun formato
+    if format == "b":
+        result = processor.generate_chingin_format_b(employee_id, year)
+    else:  # format == "c"
+        result = processor.generate_chingin_format_c(employee_id, year)
+
+    if result["status"] == "error":
+        raise HTTPException(status_code=404, detail=result["message"])
+
+    excel_path = result.get("file_path")
+    if not excel_path or not os.path.exists(excel_path):
+        raise HTTPException(status_code=500, detail="Error generando archivo Excel")
+
+    # Si se solicita PDF, convertir
+    if output_type == "pdf":
+        pdf_result = processor.convert_excel_to_pdf(excel_path)
+
+        if pdf_result["status"] == "error":
+            # Si falla conversion a PDF, devolver Excel
+            print(f"[WARN] Conversion a PDF fallo, devolviendo Excel: {pdf_result['message']}")
+            filename_encoded = quote(f"賃金台帳_{employee_id}_{year}_Format{format.upper()}.xlsx")
+            return FileResponse(
+                excel_path,
+                filename=f"賃金台帳_{employee_id}_{year}_Format{format.upper()}.xlsx",
+                headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename_encoded}"}
+            )
+
+        pdf_path = pdf_result.get("pdf_path")
+        if pdf_path and os.path.exists(pdf_path):
+            filename_encoded = quote(f"賃金台帳_{employee_id}_{year}_Format{format.upper()}.pdf")
+            return FileResponse(
+                pdf_path,
+                filename=f"賃金台帳_{employee_id}_{year}_Format{format.upper()}.pdf",
+                headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename_encoded}"}
+            )
+
+    # Devolver Excel
+    filename_encoded = quote(f"賃金台帳_{employee_id}_{year}_Format{format.upper()}.xlsx")
+    return FileResponse(
+        excel_path,
+        filename=f"賃金台帳_{employee_id}_{year}_Format{format.upper()}.xlsx",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename_encoded}"}
     )
 
 
@@ -645,8 +734,8 @@ async def get_job_type_employees(job_type: str):
 @app.on_event("startup")
 async def startup():
     init_database()
-    print("✓ Base de datos inicializada")
-    print("✓ ChinginApp v4 PRO listo!")
+    print("[OK] Base de datos inicializada")
+    print("[OK] ChinginApp v4 PRO listo!")
 
 
 if __name__ == "__main__":

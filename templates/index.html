@@ -417,6 +417,24 @@
                         </div>
                     </div>
 
+                    <!-- Selectores de Formato y Tipo de Salida -->
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">📋 Formato de Template</label>
+                            <select id="chinginFormat" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="b">Formato B - Detallado (横 12ヶ月 詳細)</option>
+                                <option value="c">Formato C - Simplificado (横 12ヶ月 簡易)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">📄 Tipo de Salida</label>
+                            <select id="chinginOutputType" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="excel">Excel (.xlsx)</option>
+                                <option value="pdf">PDF (.pdf)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="flex gap-4">
                         <button onclick="generateChingin()" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold">
                             📥 賃金台帳をダウンロード
@@ -478,6 +496,48 @@
     </main>
 
     <script>
+        // Simple cache system para evitar requests duplicados
+        const apiCache = {
+            data: {},
+            ttl: 60000, // 1 minuto
+            get(key) {
+                const cached = this.data[key];
+                if (cached && (Date.now() - cached.timestamp < this.ttl)) {
+                    return cached.value;
+                }
+                return null;
+            },
+            set(key, value) {
+                this.data[key] = {
+                    value: value,
+                    timestamp: Date.now()
+                };
+            },
+            clear() {
+                this.data = {};
+            }
+        };
+
+        // Wrapper para fetch con caché
+        async function cachedFetch(url, useCache = true) {
+            if (useCache) {
+                const cached = apiCache.get(url);
+                if (cached) {
+                    console.log('📦 Cache hit:', url);
+                    return { json: async () => cached };
+                }
+            }
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (useCache && response.ok) {
+                apiCache.set(url, data);
+            }
+
+            return { json: async () => data };
+        }
+
         // Tab navigation
         function showTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -1142,6 +1202,16 @@
         // ========================================
         
         let currentEmployee = null;
+        let employeeDataYear = null;
+        let searchTimeout = null;
+
+        // Debounced search para evitar requests duplicados
+        function searchEmployeeDebounced() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchEmployee();
+            }, 300); // 300ms delay
+        }
 
         async function searchEmployee() {
             const employeeId = document.getElementById('employeeIdInput').value.trim();
@@ -1161,16 +1231,25 @@
 
                 if (data.found) {
                     currentEmployee = data;
-                    
+
+                    // Extraer el año de los periodos del empleado
+                    if (data.periods && data.periods.length > 0) {
+                        // Los períodos vienen en formato "YYYY-MM" (ej: "2025-10")
+                        const firstPeriod = data.periods[0];
+                        employeeDataYear = parseInt(firstPeriod.split('-')[0]);
+                    } else {
+                        employeeDataYear = new Date().getFullYear();
+                    }
+
                     document.getElementById('empName').textContent = data.name_roman || data.name_jp || '-';
                     document.getElementById('empId').textContent = `ID: ${data.employee_id}`;
                     document.getElementById('empDispatch').textContent = data.dispatch || '-';
                     document.getElementById('empRecords').textContent = data.records || 0;
-                    document.getElementById('empPeriods').textContent = 
+                    document.getElementById('empPeriods').textContent =
                         data.periods ? data.periods.slice(0, 3).join(', ') + (data.periods.length > 3 ? '...' : '') : '-';
                     document.getElementById('empKana').textContent = data.name_jp || '-';
                     document.getElementById('empRoman').textContent = data.name_roman || '-';
-                    
+
                     document.getElementById('employeeResult').classList.remove('hidden');
                 } else {
                     document.getElementById('employeeNotFound').classList.remove('hidden');
@@ -1183,8 +1262,9 @@
 
         async function previewChingin() {
             if (!currentEmployee) return;
-            
-            const year = document.getElementById('yearSelect').value;
+
+            // Usar el año extraído de los datos del empleado
+            const year = employeeDataYear || new Date().getFullYear();
             
             try {
                 const response = await fetch(`/api/employee/${currentEmployee.employee_id}/preview?year=${year}`);
@@ -1267,9 +1347,18 @@
         }
 
         function generateChingin() {
-            if (!currentEmployee) return;
-            const year = document.getElementById('yearSelect').value;
-            window.location.href = `/api/employee/${currentEmployee.employee_id}/chingin?year=${year}`;
+            if (!currentEmployee) {
+                alert('⚠️ 従業員を選択してください / Por favor, busca un empleado primero');
+                return;
+            }
+
+            // Usar el año extraído de los datos del empleado en lugar del yearSelect
+            const year = employeeDataYear || new Date().getFullYear();
+            const format = document.getElementById('chinginFormat').value;
+            const outputType = document.getElementById('chinginOutputType').value;
+
+            console.log(`Generando 賃金台帳: ID=${currentEmployee.employee_id}, Year=${year}, Format=${format}, Output=${outputType}`);
+            window.location.href = `/api/employee/${currentEmployee.employee_id}/chingin-v2?year=${year}&format=${format}&output_type=${outputType}`;
         }
 
         // ========================================

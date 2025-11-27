@@ -131,7 +131,7 @@ class ExcelProcessor:
             if not sheet_name:
                 sheet_name = wb.sheetnames[0]
             
-            print(f"   📋 Procesando hoja: {sheet_name}")
+            print(f"   [Procesando] hoja: {sheet_name}")
             
             ws = wb[sheet_name]
             records_count = 0
@@ -144,14 +144,14 @@ class ExcelProcessor:
                     break
                 headers.append(h)
             
-            print(f"   📊 Columnas encontradas: {len(headers)}")
+            print(f"   [INFO] Columnas encontradas: {len(headers)}")
             
             # Detectar posiciones dinámicas de columnas especiales
             commuting_idx = None
             for idx, h in enumerate(headers):
                 if h and '通勤' in str(h) and '非' in str(h):
                     commuting_idx = idx
-                    print(f"   📍 通勤手当(非) detectado en columna {idx + 1} (índice {idx})")
+                    print(f"   [INFO] 通勤手当(非) detectado en columna {idx + 1} (indice {idx})")
                     break
             
             # Procesar cada fila
@@ -165,7 +165,12 @@ class ExcelProcessor:
                 employee_id = str(row_data[1]).strip() if len(row_data) > 1 and row_data[1] else None
                 if not employee_id or not employee_id.isdigit() or len(employee_id) < 6:
                     continue
-                
+
+                # Extraer commuting_allowance (通勤手当(非)) si existe
+                commuting_value = 0
+                if commuting_idx is not None and len(row_data) > commuting_idx:
+                    commuting_value = self._to_number(row_data[commuting_idx])
+
                 # Guardar el registro completo con todas las columnas
                 full_record = {
                     "row_data": row_data,
@@ -174,7 +179,7 @@ class ExcelProcessor:
                     "commuting_idx": commuting_idx  # Índice dinámico de 通勤手当(非)
                 }
                 self.all_records.append(full_record)
-                
+
                 # Guardar en BD los campos principales para búsquedas
                 db_record = {
                     "source_file": filename,
@@ -194,6 +199,7 @@ class ExcelProcessor:
                     "overtime_pay": self._to_number(row_data[19]) if len(row_data) > 19 else 0,
                     "night_pay": self._to_number(row_data[20]) if len(row_data) > 20 else 0,
                     "holiday_pay": self._to_number(row_data[21]) if len(row_data) > 21 else 0,
+                    "commuting_allowance": commuting_value,
                     "total_pay": self._to_number(row_data[32]) if len(row_data) > 32 else 0,
                     "health_insurance": self._to_number(row_data[33]) if len(row_data) > 33 else 0,
                     "pension": self._to_number(row_data[34]) if len(row_data) > 34 else 0,
@@ -207,9 +213,18 @@ class ExcelProcessor:
                 save_payroll_record(db_record)
                 records_count += 1
                 self.records_saved += 1
-            
+
+            # Procesar hoja 請負 si existe (formato vertical para 請負社員)
+            if "請負" in wb.sheetnames:
+                print(f"   [Procesando] hoja 請負 (formato vertical)...")
+                ws_ukeoi = wb["請負"]
+                ukeoi_count = self.process_vertical_ukeoi_sheet(ws_ukeoi, filename)
+                records_count += ukeoi_count
+                self.records_saved += ukeoi_count
+                print(f"   [INFO] Procesados {ukeoi_count} empleados 請負社員")
+
             wb.close()
-            
+
             log_audit('PROCESS_FILE', 'processed_files', filename, None, None,
                       f"Procesados {records_count} registros")
             
@@ -224,7 +239,7 @@ class ExcelProcessor:
         except Exception as e:
             import traceback
             error_msg = f"Error procesando {filename}: {str(e)}"
-            print(f"   ❌ {error_msg}")
+            print(f"   [ERROR] {error_msg}")
             traceback.print_exc()
             self.errors.append(error_msg)
             log_audit('PROCESS_FILE_ERROR', 'processed_files', filename, None, None, str(e))
@@ -237,7 +252,109 @@ class ExcelProcessor:
             })
             
             return {"status": "error", "message": str(e)}
-    
+
+    def process_vertical_ukeoi_sheet(self, ws, filename: str) -> int:
+        """
+        Procesa hoja en formato vertical (請負社員)
+        Cada empleado ocupa un bloque de ~14 columnas
+        """
+        records_count = 0
+
+        # Detectar bloques de empleados buscando en todas las columnas
+        # Buscar "給　料　支　払　明　細　書" o similar en fila 2
+        employee_columns = []
+        max_col = ws.max_column if ws.max_column else 1200
+
+        for col in range(1, max_col + 1):
+            val = ws.cell(row=2, column=col).value
+            if val and '給' in str(val) and '明' in str(val) and '細' in str(val):
+                employee_columns.append(col)
+
+        print(f"   [INFO] Encontrados {len(employee_columns)} bloques de empleados 請負社員")
+
+        # Procesar cada bloque de empleado
+        for start_col in employee_columns:
+            try:
+                # Extraer employee_id (Fila 6, Col+8)
+                employee_id = ws.cell(row=6, column=start_col + 8).value
+                if not employee_id:
+                    continue
+
+                employee_id = str(employee_id).strip()
+                if not employee_id.isdigit() or len(employee_id) < 6:
+                    continue
+
+                # Extraer período (Fila 5, Col+1)
+                period = ws.cell(row=5, column=start_col + 1).value
+
+                # Extraer nombre (Fila 8, Col+1) - formato "氏名 西岡　守"
+                name_with_label = ws.cell(row=8, column=start_col + 1).value
+                name_jp = None
+                if name_with_label:
+                    match = re.search(r'氏名\s*(.+)', str(name_with_label))
+                    if match:
+                        name_jp = match.group(1).strip()
+
+                # Extraer datos de trabajo
+                work_days = self._to_number(ws.cell(row=11, column=start_col + 4).value)
+                work_hours = self._to_number(ws.cell(row=13, column=start_col + 2).value)
+                overtime_hours = self._to_number(ws.cell(row=14, column=start_col + 2).value)
+                night_hours = self._to_number(ws.cell(row=15, column=start_col + 2).value)
+
+                # Extraer pagos
+                base_pay = self._to_number(ws.cell(row=16, column=start_col + 2).value)
+                overtime_pay = self._to_number(ws.cell(row=17, column=start_col + 2).value)
+                night_pay = self._to_number(ws.cell(row=18, column=start_col + 2).value)
+                commuting_allowance = self._to_number(ws.cell(row=20, column=start_col + 2).value)
+                total_pay = self._to_number(ws.cell(row=30, column=start_col + 2).value)
+
+                # Extraer deducciones
+                health_insurance = self._to_number(ws.cell(row=31, column=start_col + 2).value)
+                pension = self._to_number(ws.cell(row=32, column=start_col + 2).value)
+                employment_insurance = self._to_number(ws.cell(row=33, column=start_col + 2).value)
+                resident_tax = self._to_number(ws.cell(row=35, column=start_col + 2).value)
+                income_tax = self._to_number(ws.cell(row=36, column=start_col + 2).value)
+                deduction_total = self._to_number(ws.cell(row=46, column=start_col + 2).value)
+                net_pay = self._to_number(ws.cell(row=47, column=start_col + 2).value)
+
+                # Guardar en BD
+                db_record = {
+                    "source_file": filename,
+                    "employee_id": employee_id,
+                    "name_roman": None,
+                    "name_jp": name_jp,
+                    "period": period,
+                    "period_start": None,
+                    "period_end": None,
+                    "work_days": work_days,
+                    "work_hours": work_hours,
+                    "overtime_hours": overtime_hours,
+                    "holiday_hours": 0,
+                    "night_hours": night_hours,
+                    "hourly_rate": 0,
+                    "base_pay": base_pay,
+                    "overtime_pay": overtime_pay,
+                    "night_pay": night_pay,
+                    "holiday_pay": 0,
+                    "total_pay": total_pay,
+                    "health_insurance": health_insurance,
+                    "pension": pension,
+                    "employment_insurance": employment_insurance,
+                    "income_tax": income_tax,
+                    "resident_tax": resident_tax,
+                    "deduction_total": deduction_total,
+                    "net_pay": net_pay,
+                }
+
+                save_payroll_record(db_record)
+                records_count += 1
+
+            except Exception as e:
+                print(f"   [ERROR] Procesando bloque col {start_col}: {e}")
+                continue
+
+        return records_count
+
     def _format_date(self, value):
         """Formatear fecha a string"""
         if isinstance(value, datetime):
@@ -809,7 +926,7 @@ class ExcelProcessor:
             (80, "差引支給額", "net_pay"),
         ]
         
-        # Mapeo de campos de all_records (índices de columna - 0-based)
+        # Mapeo de campos de all_records (indices de columna - 0-based)
         # Columnas: X(1)=23, Y(2)=24, Z(3)=25, AA(4)=26, AB(5)=27, AC(6)=28, AD(7)=29, AE(8)=30
         # Columnas: AN(控除1)=39, AO(控除2)=40, AP(控除3)=41, AQ(控除4)=42, AR(控除5)=43, AS(控除6)=44, AT(控除7)=45, AU(控除8)=46
         # Columna:  AV(控除9)=47
@@ -915,16 +1032,15 @@ class ExcelProcessor:
                     elif field == "sum_allowances_1_8":
                         if "full_data" in rec:
                             indices = field_to_idx["sum_allowances_1_8"]
-                            # Obtener el índice dinámico de 通勤手当(非) para excluirlo
-                            commuting_idx = rec.get("commuting_idx")
                             sum_val = 0
                             for idx in indices:
-                                # Excluir si este índice es el de 通勤手当(非)
-                                if commuting_idx is not None and idx == commuting_idx:
-                                    continue
                                 v = rec["full_data"][idx] if len(rec["full_data"]) > idx else 0
                                 if v and isinstance(v, (int, float)):
                                     sum_val += v
+                            # Restar commuting_allowance (通勤手当(非)) del total
+                            commuting = rec.get("commuting_allowance", 0)
+                            if commuting and isinstance(commuting, (int, float)):
+                                sum_val -= commuting
                             if sum_val != 0:
                                 value = sum_val
                                 total += sum_val
@@ -1027,7 +1143,7 @@ class ExcelProcessor:
         }
     
     def search_employee(self, employee_id: str) -> dict:
-        """Buscar empleado y retornar su información"""
+        """Buscar empleado y retornar su informacion"""
         from database import get_payroll_by_employee, get_employee_master
         
         records = get_payroll_by_employee(employee_id)
@@ -1088,6 +1204,622 @@ class ExcelProcessor:
             "records": len(records),
             "periods": list(periods)
         }
+
+    def generate_chingin_format_b(self, employee_id: str, year: int = None, output_path: str = None) -> dict:
+        """
+        Generar Chingin台帳 usando Template B (formato horizontal 12 meses)
+
+        Args:
+            employee_id: ID del empleado
+            year: Ano (default: ano actual)
+            output_path: Ruta de salida (opcional)
+
+        Returns:
+            dict con status, message y file_path
+        """
+        try:
+            if year is None:
+                year = datetime.now().year
+
+            print(f"\n[INFO] Generando Chingin Format B para empleado {employee_id}, ano {year}")
+
+            # Cargar template
+            template_path = os.path.join("templates", "template_format_b.xlsx")
+            if not os.path.exists(template_path):
+                return {
+                    "status": "error",
+                    "message": f"Template B no encontrado: {template_path}"
+                }
+
+            wb = load_workbook(template_path)
+            ws = wb.active
+
+            # Obtener datos del empleado para todos los meses del ano
+            from database import get_payroll_by_employee_year
+            records = get_payroll_by_employee_year(employee_id, year)
+
+            if not records:
+                wb.close()
+                return {
+                    "status": "error",
+                    "message": f"No hay datos para empleado {employee_id} en {year}"
+                }
+
+            # Obtener informacion del empleado
+            first_record = records[0]
+            employee_name = first_record.get('name_jp', '')
+            birth_date = first_record.get('birth_date', '')
+            hire_date = first_record.get('hire_date', '')
+            department = first_record.get('department', '')
+            gender = first_record.get('gender', '')
+
+            print(f"[INFO] Empleado: {employee_name}")
+            print(f"[INFO] Registros encontrados: {len(records)}")
+
+            # LLENAR DATOS DEL TEMPLATE
+
+            # Row 1: Titulo con ano
+            ws['A1'] = f"  {year}年　　賃　金　台　帳"
+
+            # Row 4: Informacion del empleado
+            # E4-G4: Birth date
+            if birth_date:
+                try:
+                    bd = datetime.strptime(birth_date, '%Y-%m-%d')
+                    ws['E4'] = f"{bd.year}年"
+                    ws['F4'] = f"{bd.month}月"
+                    ws['G4'] = f"{bd.day}日"
+                except:
+                    ws['E4'] = birth_date
+
+            # H4-J4: Hire date
+            if hire_date:
+                try:
+                    hd = datetime.strptime(hire_date, '%Y-%m-%d')
+                    ws['H4'] = f"{hd.year}年"
+                    ws['I4'] = f"{hd.month}月"
+                    ws['J4'] = f"{hd.day}日"
+                except:
+                    ws['H4'] = hire_date
+
+            # K4: Department
+            ws['K4'] = department
+
+            # M4: Name
+            ws['M4'] = employee_name
+
+            # P4: Gender
+            ws['P4'] = gender
+
+            # Organizar records por mes (1-12)
+            records_by_month = {}
+            for rec in records:
+                period = rec.get('period', '')
+                # Extraer mes del periodo (formato: YYYY-MM)
+                if '-' in period:
+                    month = int(period.split('-')[1])
+                    records_by_month[month] = rec
+
+            # Mapeo de campos DB -> filas del template
+            field_mapping = {
+                7: 'work_days',          # 労働日数
+                8: 'work_hours',         # 労働時間数
+                9: 'overtime_hours',     # 時間外労働
+                10: 'holiday_hours',     # 休日労働
+                11: 'night_hours',       # 深夜労働
+                13: 'base_pay',          # 基本給
+                18: 'overtime_pay',      # 時間外手当
+                19: 'holiday_pay',       # 休日労働手当
+                20: 'night_pay',         # 深夜勤務手当
+                22: 'commuting_allowance', # 通勤手当(非課税)
+                27: 'health_insurance',  # 健康保険
+                28: 'care_insurance',    # 介護保険
+                29: 'pension_insurance', # 厚生年金
+                30: 'employment_insurance', # 雇用保険
+                33: 'income_tax',        # 所得税
+                34: 'resident_tax',      # 住民税
+            }
+
+            # Llenar datos por mes (columnas B-M = columnas 2-13)
+            for month in range(1, 13):
+                col = month + 1  # B=2, C=3, ..., M=13
+
+                if month in records_by_month:
+                    rec = records_by_month[month]
+
+                    # Llenar cada campo segun el mapeo
+                    for row, field in field_mapping.items():
+                        value = rec.get(field, 0)
+                        if value and value != 0:
+                            cell = ws.cell(row=row, column=col)
+                            cell.value = value
+
+                            # Aplicar formato segun tipo de dato
+                            if field in ['work_days']:
+                                cell.number_format = '0"日"'
+                            elif field in ['work_hours', 'overtime_hours', 'holiday_hours', 'night_hours']:
+                                cell.number_format = '0"時間"'
+                            else:
+                                cell.number_format = '#,##0'
+
+            # Calcular totales en columna P (columna 16)
+            for row, field in field_mapping.items():
+                total = 0
+                for month in range(1, 13):
+                    if month in records_by_month:
+                        value = records_by_month[month].get(field, 0)
+                        if value:
+                            total += value
+
+                if total != 0:
+                    cell = ws.cell(row=row, column=16)  # Column P
+                    cell.value = total
+
+                    # Aplicar formato
+                    if field in ['work_days']:
+                        cell.number_format = '0"日"'
+                    elif field in ['work_hours', 'overtime_hours', 'holiday_hours', 'night_hours']:
+                        cell.number_format = '0"時間"'
+                    else:
+                        cell.number_format = '#,##0'
+
+            # Calcular filas de totales especiales
+            for month in range(1, 13):
+                col = month + 1
+
+                if month in records_by_month:
+                    rec = records_by_month[month]
+
+                    # Row 24: 課税合計 (Taxable total)
+                    taxable_total = (rec.get('base_pay', 0) +
+                                    rec.get('overtime_pay', 0) +
+                                    rec.get('holiday_pay', 0) +
+                                    rec.get('night_pay', 0))
+                    if taxable_total > 0:
+                        ws.cell(row=24, column=col).value = taxable_total
+                        ws.cell(row=24, column=col).number_format = '#,##0'
+
+                    # Row 25: 非課税合計 (Non-taxable total)
+                    non_taxable = rec.get('commuting_allowance', 0)
+                    if non_taxable > 0:
+                        ws.cell(row=25, column=col).value = non_taxable
+                        ws.cell(row=25, column=col).number_format = '#,##0'
+
+                    # Row 26: 総支給合計 (Gross total)
+                    gross_total = taxable_total + non_taxable
+                    if gross_total > 0:
+                        ws.cell(row=26, column=col).value = gross_total
+                        ws.cell(row=26, column=col).number_format = '#,##0'
+
+                    # Row 31: 社会保険合計 (Social insurance total)
+                    social_ins_total = (rec.get('health_insurance', 0) +
+                                       rec.get('care_insurance', 0) +
+                                       rec.get('pension_insurance', 0) +
+                                       rec.get('employment_insurance', 0))
+                    if social_ins_total > 0:
+                        ws.cell(row=31, column=col).value = social_ins_total
+                        ws.cell(row=31, column=col).number_format = '#,##0'
+
+                    # Row 32: 課税対象額 (Taxable amount)
+                    taxable_amount = taxable_total
+                    if taxable_amount > 0:
+                        ws.cell(row=32, column=col).value = taxable_amount
+                        ws.cell(row=32, column=col).number_format = '#,##0'
+
+                    # Row 39: 控除合計 (Total deductions)
+                    total_deductions = (social_ins_total +
+                                       rec.get('income_tax', 0) +
+                                       rec.get('resident_tax', 0))
+                    if total_deductions > 0:
+                        ws.cell(row=39, column=col).value = total_deductions
+                        ws.cell(row=39, column=col).number_format = '#,##0'
+
+                    # Row 40: 差引支給額 (Net pay)
+                    net_pay = gross_total - total_deductions
+                    if net_pay > 0:
+                        ws.cell(row=40, column=col).value = net_pay
+                        ws.cell(row=40, column=col).number_format = '#,##0'
+
+            # Calcular totales anuales en columna P (column 16)
+            # Row 24: Total taxable
+            total_taxable = sum(records_by_month[m].get('base_pay', 0) +
+                               records_by_month[m].get('overtime_pay', 0) +
+                               records_by_month[m].get('holiday_pay', 0) +
+                               records_by_month[m].get('night_pay', 0)
+                               for m in records_by_month)
+            if total_taxable > 0:
+                ws.cell(row=24, column=16).value = total_taxable
+                ws.cell(row=24, column=16).number_format = '#,##0'
+
+            # Row 25: Total non-taxable
+            total_non_taxable = sum(records_by_month[m].get('commuting_allowance', 0)
+                                   for m in records_by_month)
+            if total_non_taxable > 0:
+                ws.cell(row=25, column=16).value = total_non_taxable
+                ws.cell(row=25, column=16).number_format = '#,##0'
+
+            # Row 26: Gross total
+            total_gross = total_taxable + total_non_taxable
+            if total_gross > 0:
+                ws.cell(row=26, column=16).value = total_gross
+                ws.cell(row=26, column=16).number_format = '#,##0'
+
+            # Row 31: Total social insurance
+            total_social = sum(records_by_month[m].get('health_insurance', 0) +
+                              records_by_month[m].get('care_insurance', 0) +
+                              records_by_month[m].get('pension_insurance', 0) +
+                              records_by_month[m].get('employment_insurance', 0)
+                              for m in records_by_month)
+            if total_social > 0:
+                ws.cell(row=31, column=16).value = total_social
+                ws.cell(row=31, column=16).number_format = '#,##0'
+
+            # Row 39: Total deductions
+            total_deduct = (total_social +
+                           sum(records_by_month[m].get('income_tax', 0) for m in records_by_month) +
+                           sum(records_by_month[m].get('resident_tax', 0) for m in records_by_month))
+            if total_deduct > 0:
+                ws.cell(row=39, column=16).value = total_deduct
+                ws.cell(row=39, column=16).number_format = '#,##0'
+
+            # Row 40: Net pay
+            total_net = total_gross - total_deduct
+            if total_net > 0:
+                ws.cell(row=40, column=16).value = total_net
+                ws.cell(row=40, column=16).number_format = '#,##0'
+
+            # Guardar archivo
+            if output_path is None:
+                os.makedirs("outputs", exist_ok=True)
+                safe_name = employee_name.replace('/', '_').replace('\\', '_')
+                output_path = f"outputs/賃金台帳_{safe_name}_{year}_FormatB.xlsx"
+
+            wb.save(output_path)
+            wb.close()
+
+            print(f"[OK] Archivo generado: {output_path}")
+
+            return {
+                "status": "success",
+                "message": "Chingin Format B generado exitosamente",
+                "file_path": output_path,
+                "employee_id": employee_id,
+                "employee_name": employee_name,
+                "year": year,
+                "records": len(records)
+            }
+
+        except Exception as e:
+            print(f"[ERROR] generate_chingin_format_b: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+    def generate_chingin_format_c(self, employee_id: str, year: int = None, output_path: str = None) -> dict:
+        """
+        Generar Chingin台帳 usando Template C (formato horizontal 12 meses simplificado)
+
+        Args:
+            employee_id: ID del empleado
+            year: Ano (default: ano actual)
+            output_path: Ruta de salida (opcional)
+
+        Returns:
+            dict con status, message y file_path
+        """
+        try:
+            if year is None:
+                year = datetime.now().year
+
+            print(f"\n[INFO] Generando Chingin Format C para empleado {employee_id}, ano {year}")
+
+            # Cargar template
+            template_path = os.path.join("templates", "template_format_c.xlsx")
+            if not os.path.exists(template_path):
+                return {
+                    "status": "error",
+                    "message": f"Template C no encontrado: {template_path}"
+                }
+
+            wb = load_workbook(template_path)
+            ws = wb.active
+
+            # Obtener datos del empleado para todos los meses del ano
+            from database import get_payroll_by_employee_year
+            records = get_payroll_by_employee_year(employee_id, year)
+
+            if not records:
+                wb.close()
+                return {
+                    "status": "error",
+                    "message": f"No hay datos para empleado {employee_id} en {year}"
+                }
+
+            # Obtener informacion del empleado
+            first_record = records[0]
+            employee_name = first_record.get('name_jp', '')
+            hire_date = first_record.get('hire_date', '')
+            department = first_record.get('department', '')
+            gender = first_record.get('gender', '')
+
+            print(f"[INFO] Empleado: {employee_name}")
+            print(f"[INFO] Registros encontrados: {len(records)}")
+
+            # LLENAR DATOS DEL TEMPLATE
+
+            # Row 1: Titulo
+            ws['B1'] = f"賃    金    台    帳"
+
+            # Row 6-8: Informacion del empleado
+            # R6: 所属 (Department)
+            ws['R6'] = department
+
+            # AP6: 氏名 (Name)
+            ws['AP6'] = employee_name
+
+            # BJ6: 性別 (Gender)
+            ws['BJ6'] = gender
+
+            # B8: Hire date
+            if hire_date:
+                try:
+                    hd = datetime.strptime(hire_date, '%Y-%m-%d')
+                    ws['B8'] = f"{hd.year}年  {hd.month}月  {hd.day}日  雇入"
+                except:
+                    ws['B8'] = f"{hire_date}  雇入"
+
+            # Organizar records por mes (1-12)
+            records_by_month = {}
+            for rec in records:
+                period = rec.get('period', '')
+                if '-' in period:
+                    month = int(period.split('-')[1])
+                    records_by_month[month] = rec
+
+            # Mapeo de campos DB -> filas del template
+            # Template C tiene filas diferentes
+            field_mapping = {
+                14: 'work_days',         # 労働日数
+                16: 'work_hours',        # 労働時間
+                18: 'holiday_hours',     # 休日労働時間数
+                22: 'night_hours',       # 深夜残業時間数
+                24: 'base_pay',          # 基本給
+                26: 'overtime_pay',      # 所定時間外割増賃金
+            }
+
+            # Columnas mensuales: L(12), P(16), T(20), X(24), AB(28), AF(32), AJ(36), AN(40), AR(44), AV(48), AZ(52), BD(56)
+            # Formula: 12 + (month - 1) * 4
+            monthly_columns = [12 + i * 4 for i in range(12)]  # [12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56]
+            total_column = 60  # Column BH (合計)
+
+            # Llenar datos por mes
+            for month_idx, month in enumerate(range(1, 13)):
+                col = monthly_columns[month_idx]
+
+                if month in records_by_month:
+                    rec = records_by_month[month]
+
+                    # Llenar cada campo segun el mapeo
+                    for row, field in field_mapping.items():
+                        value = rec.get(field, 0)
+                        if value and value != 0:
+                            cell = ws.cell(row=row, column=col)
+                            cell.value = value
+
+                            # Aplicar formato segun tipo de dato
+                            if field in ['work_days']:
+                                cell.number_format = '0'
+                            elif field in ['work_hours', 'holiday_hours', 'night_hours']:
+                                cell.number_format = '0.0'
+                            else:
+                                cell.number_format = '#,##0'
+
+                    # Row 28: 手当 (Allowances) - incluye commuting_allowance y otras
+                    allowances = (rec.get('commuting_allowance', 0) +
+                                rec.get('night_pay', 0) +
+                                rec.get('holiday_pay', 0))
+                    if allowances > 0:
+                        ws.cell(row=28, column=col).value = allowances
+                        ws.cell(row=28, column=col).number_format = '#,##0'
+
+                    # Row 40: 小計 (Subtotal - Payments)
+                    subtotal = (rec.get('base_pay', 0) +
+                               rec.get('overtime_pay', 0) +
+                               allowances)
+                    if subtotal > 0:
+                        ws.cell(row=40, column=col).value = subtotal
+                        ws.cell(row=40, column=col).number_format = '#,##0'
+
+                    # Row 46: 合計 (Total - Gross pay)
+                    total_pay = subtotal  # En template C, por ahora es igual al subtotal
+                    if total_pay > 0:
+                        ws.cell(row=46, column=col).value = total_pay
+                        ws.cell(row=46, column=col).number_format = '#,##0'
+
+                    # Row 48: 控除額 (Deductions)
+                    deductions = (rec.get('health_insurance', 0) +
+                                 rec.get('care_insurance', 0) +
+                                 rec.get('pension_insurance', 0) +
+                                 rec.get('employment_insurance', 0) +
+                                 rec.get('income_tax', 0) +
+                                 rec.get('resident_tax', 0))
+                    if deductions > 0:
+                        ws.cell(row=48, column=col).value = deductions
+                        ws.cell(row=48, column=col).number_format = '#,##0'
+
+            # Calcular totales anuales en columna BH (60)
+            for row, field in field_mapping.items():
+                total = sum(records_by_month[m].get(field, 0) for m in records_by_month)
+                if total > 0:
+                    cell = ws.cell(row=row, column=total_column)
+                    cell.value = total
+
+                    # Aplicar formato
+                    if field in ['work_days']:
+                        cell.number_format = '0'
+                    elif field in ['work_hours', 'holiday_hours', 'night_hours']:
+                        cell.number_format = '0.0'
+                    else:
+                        cell.number_format = '#,##0'
+
+            # Row 28: Total allowances
+            total_allowances = sum(
+                records_by_month[m].get('commuting_allowance', 0) +
+                records_by_month[m].get('night_pay', 0) +
+                records_by_month[m].get('holiday_pay', 0)
+                for m in records_by_month
+            )
+            if total_allowances > 0:
+                ws.cell(row=28, column=total_column).value = total_allowances
+                ws.cell(row=28, column=total_column).number_format = '#,##0'
+
+            # Row 40: Total subtotal
+            total_subtotal = sum(
+                records_by_month[m].get('base_pay', 0) +
+                records_by_month[m].get('overtime_pay', 0) +
+                records_by_month[m].get('commuting_allowance', 0) +
+                records_by_month[m].get('night_pay', 0) +
+                records_by_month[m].get('holiday_pay', 0)
+                for m in records_by_month
+            )
+            if total_subtotal > 0:
+                ws.cell(row=40, column=total_column).value = total_subtotal
+                ws.cell(row=40, column=total_column).number_format = '#,##0'
+
+            # Row 46: Total gross pay
+            if total_subtotal > 0:
+                ws.cell(row=46, column=total_column).value = total_subtotal
+                ws.cell(row=46, column=total_column).number_format = '#,##0'
+
+            # Row 48: Total deductions
+            total_deductions = sum(
+                records_by_month[m].get('health_insurance', 0) +
+                records_by_month[m].get('care_insurance', 0) +
+                records_by_month[m].get('pension_insurance', 0) +
+                records_by_month[m].get('employment_insurance', 0) +
+                records_by_month[m].get('income_tax', 0) +
+                records_by_month[m].get('resident_tax', 0)
+                for m in records_by_month
+            )
+            if total_deductions > 0:
+                ws.cell(row=48, column=total_column).value = total_deductions
+                ws.cell(row=48, column=total_column).number_format = '#,##0'
+
+            # Guardar archivo
+            if output_path is None:
+                os.makedirs("outputs", exist_ok=True)
+                safe_name = employee_name.replace('/', '_').replace('\\', '_')
+                output_path = f"outputs/賃金台帳_{safe_name}_{year}_FormatC.xlsx"
+
+            wb.save(output_path)
+            wb.close()
+
+            print(f"[OK] Archivo generado: {output_path}")
+
+            return {
+                "status": "success",
+                "message": "Chingin Format C generado exitosamente",
+                "file_path": output_path,
+                "employee_id": employee_id,
+                "employee_name": employee_name,
+                "year": year,
+                "records": len(records)
+            }
+
+        except Exception as e:
+            print(f"[ERROR] generate_chingin_format_c: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+    def convert_excel_to_pdf(self, excel_path: str, pdf_path: str = None) -> dict:
+        """
+        Convertir archivo Excel a PDF usando win32com (MS Excel COM automation)
+
+        Args:
+            excel_path: Ruta del archivo Excel
+            pdf_path: Ruta de salida PDF (opcional, se genera automaticamente)
+
+        Returns:
+            dict con status, message y pdf_path
+        """
+        try:
+            import win32com.client
+            import pythoncom
+
+            if not os.path.exists(excel_path):
+                return {
+                    "status": "error",
+                    "message": f"Archivo Excel no encontrado: {excel_path}"
+                }
+
+            # Generar ruta PDF si no se proporciona
+            if pdf_path is None:
+                pdf_path = excel_path.replace('.xlsx', '.pdf').replace('.xlsm', '.pdf')
+
+            # Convertir rutas a absolutas
+            excel_path = os.path.abspath(excel_path)
+            pdf_path = os.path.abspath(pdf_path)
+
+            print(f"[INFO] Convirtiendo Excel a PDF...")
+            print(f"  Origen: {excel_path}")
+            print(f"  Destino: {pdf_path}")
+
+            # Inicializar COM
+            pythoncom.CoInitialize()
+
+            # Crear instancia de Excel
+            excel = None
+            wb = None
+            try:
+                excel = win32com.client.Dispatch("Excel.Application")
+                excel.Visible = False
+                excel.DisplayAlerts = False
+
+                # Abrir workbook
+                wb = excel.Workbooks.Open(excel_path)
+
+                # Exportar a PDF
+                # Formato PDF = 0 (xlTypePDF)
+                wb.ExportAsFixedFormat(0, pdf_path)
+
+                print(f"[OK] PDF generado: {pdf_path}")
+
+                return {
+                    "status": "success",
+                    "message": "Conversion a PDF exitosa",
+                    "pdf_path": pdf_path
+                }
+
+            finally:
+                # Cerrar y limpiar
+                if wb:
+                    wb.Close(SaveChanges=False)
+                if excel:
+                    excel.Quit()
+                pythoncom.CoUninitialize()
+
+        except ImportError:
+            error_msg = "win32com no esta instalado. Instalar con: pip install pywin32"
+            print(f"[ERROR] {error_msg}")
+            return {
+                "status": "error",
+                "message": error_msg
+            }
+        except Exception as e:
+            print(f"[ERROR] convert_excel_to_pdf: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
 
 # Test

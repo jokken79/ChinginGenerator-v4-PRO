@@ -89,6 +89,7 @@ def init_database():
                 overtime_pay REAL DEFAULT 0,
                 night_pay REAL DEFAULT 0,
                 holiday_pay REAL DEFAULT 0,
+                commuting_allowance REAL DEFAULT 0,
                 total_pay REAL DEFAULT 0,
                 health_insurance REAL DEFAULT 0,
                 pension REAL DEFAULT 0,
@@ -265,16 +266,24 @@ def init_database():
             )
         """)
         
-        # Crear índices para mejor rendimiento
+        # Crear indices para mejor rendimiento
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_payroll_employee ON payroll_records(employee_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_payroll_period ON payroll_records(period)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_haken_employee_id ON haken_employees(employee_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ukeoi_employee_id ON ukeoi_employees(employee_id)")
-        
+
+        # Migración: Agregar columna commuting_allowance si no existe
+        try:
+            cursor.execute("SELECT commuting_allowance FROM payroll_records LIMIT 1")
+        except sqlite3.OperationalError:
+            print("[INFO] Agregando columna commuting_allowance a payroll_records...")
+            cursor.execute("ALTER TABLE payroll_records ADD COLUMN commuting_allowance REAL DEFAULT 0")
+            print("[OK] Columna commuting_allowance agregada")
+
         conn.commit()
-        print("✓ Base de datos inicializada correctamente")
+        print("[OK] Base de datos inicializada correctamente")
 
 
 # ========================================
@@ -350,11 +359,11 @@ def save_payroll_record(record: Dict) -> int:
             INSERT INTO payroll_records (
                 employee_id, period, period_start, period_end,
                 work_days, work_hours, overtime_hours, night_hours, holiday_hours,
-                base_pay, overtime_pay, night_pay, holiday_pay, total_pay,
+                base_pay, overtime_pay, night_pay, holiday_pay, commuting_allowance, total_pay,
                 health_insurance, pension, employment_insurance,
                 income_tax, resident_tax, deduction_total, net_pay,
                 source_file, raw_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(employee_id, period) DO UPDATE SET
                 work_days = excluded.work_days,
                 work_hours = excluded.work_hours,
@@ -365,6 +374,7 @@ def save_payroll_record(record: Dict) -> int:
                 overtime_pay = excluded.overtime_pay,
                 night_pay = excluded.night_pay,
                 holiday_pay = excluded.holiday_pay,
+                commuting_allowance = excluded.commuting_allowance,
                 total_pay = excluded.total_pay,
                 health_insurance = excluded.health_insurance,
                 pension = excluded.pension,
@@ -390,6 +400,7 @@ def save_payroll_record(record: Dict) -> int:
             record.get('overtime_pay', 0),
             record.get('night_pay', 0),
             record.get('holiday_pay', 0),
+            record.get('commuting_allowance', 0),
             record.get('total_pay', 0),
             record.get('health_insurance', 0),
             record.get('pension', 0),
@@ -422,6 +433,64 @@ def get_payroll_by_employee(employee_id: str) -> List[Dict]:
             ORDER BY period DESC
         """, (employee_id,))
         return [dict(row) for row in cursor.fetchall()]
+
+
+def get_payroll_by_employee_year(employee_id: str, year: int) -> List[Dict]:
+    """Obtener nominas de un empleado para un ano especifico"""
+    import re
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        # Buscar por formato japonés "2025年..." o formato "2025-%"
+        cursor.execute("""
+            SELECT pr.*, e.name_roman, e.name_jp, e.hire_date, e.department
+            FROM payroll_records pr
+            LEFT JOIN employees e ON pr.employee_id = e.employee_id
+            WHERE pr.employee_id = ?
+              AND (pr.period LIKE ? OR pr.period LIKE ?)
+            ORDER BY pr.period ASC
+        """, (employee_id, f"{year}年%", f"{year}-%"))
+
+        records = [dict(row) for row in cursor.fetchall()]
+
+        # Normalizar el periodo a formato "YYYY-MM" para procesamiento
+        for record in records:
+            period = record.get('period', '')
+            # Si ya está en formato YYYY-MM, dejarlo
+            if re.match(r'^\d{4}-\d{2}$', period):
+                continue
+            # Extraer año y mes del formato japonés "2025年2月分..."
+            match = re.search(r'(\d{4})年(\d{1,2})月', period)
+            if match:
+                year_val = match.group(1)
+                month_val = match.group(2).zfill(2)
+                record['period'] = f"{year_val}-{month_val}"
+
+        # Obtener datos adicionales de tablas maestras (gender, birth_date)
+        if records:
+            emp_id = records[0].get('employee_id')
+            # Buscar en haken_employees
+            cursor.execute("""
+                SELECT gender, birth_date FROM haken_employees WHERE employee_id = ?
+            """, (emp_id,))
+            haken_row = cursor.fetchone()
+            if haken_row:
+                haken_data = dict(haken_row)
+                for record in records:
+                    record['gender'] = haken_data.get('gender', '')
+                    record['birth_date'] = haken_data.get('birth_date', '')
+            else:
+                # Buscar en ukeoi_employees
+                cursor.execute("""
+                    SELECT gender, birth_date FROM ukeoi_employees WHERE employee_id = ?
+                """, (emp_id,))
+                ukeoi_row = cursor.fetchone()
+                if ukeoi_row:
+                    ukeoi_data = dict(ukeoi_row)
+                    for record in records:
+                        record['gender'] = ukeoi_data.get('gender', '')
+                        record['birth_date'] = ukeoi_data.get('birth_date', '')
+
+        return records
 
 
 def get_payroll_by_period(period: str) -> List[Dict]:
@@ -1100,11 +1169,41 @@ def get_all_haken_employees() -> List[Dict]:
 
 
 def get_all_ukeoi_employees() -> Dict:
-    """Obtener todos los empleados 請負"""
+    """
+    Obtener todos los empleados 請負
+    Primero busca en ukeoi_employees (master),
+    si está vacía, busca en employees con IDs 03xxxx (de nómina)
+    """
     with get_connection() as conn:
         cursor = conn.cursor()
+
+        # Primero intentar obtener de la tabla master
         cursor.execute("SELECT * FROM ukeoi_employees ORDER BY employee_id")
-        return {'employees': [dict(row) for row in cursor.fetchall()]}
+        master_employees = [dict(row) for row in cursor.fetchall()]
+
+        # Si hay empleados en master, usar esos
+        if master_employees:
+            return {'employees': master_employees}
+
+        # Si no hay en master, buscar en employees con IDs 03xxxx (請負社員 de nómina)
+        cursor.execute("""
+            SELECT DISTINCT
+                employee_id,
+                name_jp as name,
+                name_jp as name_kana,
+                name_roman,
+                NULL as dispatch_company,
+                NULL as job_type,
+                NULL as hire_date,
+                NULL as gender,
+                'active' as status
+            FROM employees
+            WHERE employee_id LIKE '03%'
+            ORDER BY employee_id
+        """)
+        payroll_employees = [dict(row) for row in cursor.fetchall()]
+
+        return {'employees': payroll_employees}
 
 
 def get_employee_master_stats() -> Dict:

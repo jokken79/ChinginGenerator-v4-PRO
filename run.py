@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 賃金台帳 Generator v4 PRO - Launcher
 """
+import sys
+import io
 import webbrowser
 import time
 import threading
+
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 def open_browser():
     time.sleep(2)
