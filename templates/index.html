@@ -5,19 +5,291 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>賃金台帳 Generator v4 PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome para iconos profesionales -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        .drop-zone { border: 3px dashed #cbd5e1; transition: all 0.3s; }
-        .drop-zone.dragover { border-color: #3b82f6; background: #eff6ff; }
-        .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
+        /* Tipografía moderna */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* ===== MEJORAS VISUALES PARA THEME CLÁSICO ===== */
+
+        /* Zona de drop mejorada */
+        .drop-zone {
+            border: 3px dashed #cbd5e1;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+        .drop-zone:hover {
+            border-color: #93c5fd;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            transform: scale(1.01);
+        }
+        .drop-zone.dragover {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Tabs mejorados */
+        .tab-btn {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .tab-btn::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+            border-radius: 3px 3px 0 0;
+        }
+        .tab-btn:hover::after {
+            width: 100%;
+        }
+        .tab-active {
+            color: #3b82f6 !important;
+            font-weight: 600;
+        }
+        .tab-active::after {
+            width: 100% !important;
+        }
+
+        /* Tarjetas con elevación y hover */
+        .card-elevated {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-elevated:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+        }
+
+        /* Botones mejorados */
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px -3px rgba(59, 130, 246, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3);
+        }
+        .btn-success:hover {
+            box-shadow: 0 8px 15px -3px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
+        }
+        .btn-danger:hover {
+            box-shadow: 0 8px 15px -3px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-purple {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3);
+        }
+        .btn-purple:hover {
+            box-shadow: 0 8px 15px -3px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-orange {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);
+        }
+        .btn-orange:hover {
+            box-shadow: 0 8px 15px -3px rgba(249, 115, 22, 0.4);
+        }
+
+        /* Terminal de progreso mejorado */
+        .terminal-modern {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .terminal-modern .terminal-header {
+            background: linear-gradient(90deg, #1e293b, #334155);
+            padding: 8px 12px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #eab308; }
+        .terminal-dot.green { background: #22c55e; }
+
+        /* Stats cards mejoradas */
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            border-radius: 16px 16px 0 0;
+        }
+        .stat-card.blue::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .stat-card.green::before { background: linear-gradient(90deg, #22c55e, #4ade80); }
+        .stat-card.purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+        .stat-card.orange::before { background: linear-gradient(90deg, #f97316, #fb923c); }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -8px rgba(0,0,0,0.15);
+        }
+
+        /* Progress bar animado */
+        .progress-bar-animated {
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8, #3b82f6);
+            background-size: 200% 100%;
+            animation: progressShine 2s linear infinite;
+        }
+        @keyframes progressShine {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Icono flotante mejorado */
+        .icon-float {
+            animation: iconFloat 3s ease-in-out infinite;
+        }
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* Header con gradiente sutil */
+        .header-gradient {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+
+        /* Notificaciones toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .toast.success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .toast.info { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+
+        /* Badges mejorados */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .badge:hover {
+            transform: scale(1.05);
+        }
+
+        /* Tabla mejorada */
+        .table-modern th {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            color: #64748b;
+        }
+        .table-modern tr:hover td {
+            background: #f8fafc;
+        }
+
+        /* Ripple effect */
+        .ripple {
+            position: relative;
+            overflow: hidden;
+        }
+        .ripple::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+            background-repeat: no-repeat;
+            background-position: 50%;
+            transform: scale(10, 10);
+            opacity: 0;
+            transition: transform .5s, opacity 1s;
+        }
+        .ripple:active::after {
+            transform: scale(0, 0);
+            opacity: .3;
+            transition: 0s;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
+    <header class="header-gradient shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <span class="text-white text-xl">📊</span>
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-file-invoice-dollar text-white text-xl"></i>
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-gray-800">賃金台帳 Generator</h1>
@@ -25,11 +297,11 @@
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <span id="dbStatus" class="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                    🗄️ BD Conectada
+                <span id="dbStatus" class="badge bg-green-100 text-green-700">
+                    <i class="fas fa-database"></i> BD Conectada
                 </span>
-                <span id="recordCount" class="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                    0 registros
+                <span id="recordCount" class="badge bg-gray-100 text-gray-700">
+                    <i class="fas fa-list"></i> 0 registros
                 </span>
             </div>
         </div>
@@ -38,27 +310,27 @@
     <!-- Tabs -->
     <nav class="bg-white border-b">
         <div class="max-w-7xl mx-auto px-4">
-            <div class="flex gap-6">
-                <button onclick="showTab('upload')" id="tab-upload" class="py-3 px-2 tab-active font-medium">
-                    📁 Subir Archivos
+            <div class="flex gap-1">
+                <button onclick="showTab('upload')" id="tab-upload" class="tab-btn tab-active py-3 px-4 text-gray-600 hover:text-gray-800 font-medium">
+                    <i class="fas fa-cloud-upload-alt mr-2"></i>Subir Archivos
                 </button>
-                <button onclick="showTab('data')" id="tab-data" class="py-3 px-2 text-gray-600 hover:text-gray-800 font-medium">
-                    📊 Datos
+                <button onclick="showTab('data')" id="tab-data" class="tab-btn py-3 px-4 text-gray-600 hover:text-gray-800 font-medium">
+                    <i class="fas fa-table mr-2"></i>Datos
                 </button>
-                <button onclick="showTab('export')" id="tab-export" class="py-3 px-2 text-gray-600 hover:text-gray-800 font-medium">
-                    📥 Exportar
+                <button onclick="showTab('export')" id="tab-export" class="tab-btn py-3 px-4 text-gray-600 hover:text-gray-800 font-medium">
+                    <i class="fas fa-file-export mr-2"></i>Exportar
                 </button>
-                <button onclick="showTab('backup')" id="tab-backup" class="py-3 px-2 text-gray-600 hover:text-gray-800 font-medium">
-                    💾 Backup
+                <button onclick="showTab('backup')" id="tab-backup" class="tab-btn py-3 px-4 text-gray-600 hover:text-gray-800 font-medium">
+                    <i class="fas fa-save mr-2"></i>Backup
                 </button>
-                <button onclick="showTab('audit')" id="tab-audit" class="py-3 px-2 text-gray-600 hover:text-gray-800 font-medium">
-                    📋 Auditoría
+                <button onclick="showTab('audit')" id="tab-audit" class="tab-btn py-3 px-4 text-gray-600 hover:text-gray-800 font-medium">
+                    <i class="fas fa-clipboard-list mr-2"></i>Auditoría
                 </button>
-                <button onclick="showTab('settings')" id="tab-settings" class="py-3 px-2 text-gray-600 hover:text-gray-800 font-medium">
-                    ⚙️ Config
+                <button onclick="showTab('settings')" id="tab-settings" class="tab-btn py-3 px-4 text-gray-600 hover:text-gray-800 font-medium">
+                    <i class="fas fa-cog mr-2"></i>Config
                 </button>
-                <button onclick="showTab('chingin')" id="tab-chingin" class="py-3 px-2 text-gray-600 hover:text-gray-800 font-medium">
-                    📄 賃金台帳
+                <button onclick="showTab('chingin')" id="tab-chingin" class="tab-btn py-3 px-4 text-gray-600 hover:text-gray-800 font-medium">
+                    <i class="fas fa-file-alt mr-2"></i>賃金台帳
                 </button>
             </div>
         </div>
@@ -67,42 +339,59 @@
     <main class="max-w-7xl mx-auto px-4 py-6">
         <!-- Tab: Upload -->
         <section id="section-upload" class="tab-content">
-            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div class="card-elevated p-6 mb-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold">📁 Subir Archivos 勤怠表</h2>
-                    <button onclick="clearAllData()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">
-                        🗑️ Borrar Todos los Datos
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <i class="fas fa-folder-open text-blue-600"></i> Subir Archivos 勤怠表
+                    </h2>
+                    <button onclick="clearAllData()" class="btn-primary btn-danger ripple px-4 py-2 text-sm">
+                        <i class="fas fa-trash-alt mr-2"></i>Borrar Todos los Datos
                     </button>
                 </div>
-                
-                <div id="dropZone" class="drop-zone rounded-xl p-10 text-center cursor-pointer hover:bg-gray-50">
+
+                <div id="dropZone" class="drop-zone rounded-xl p-10 text-center cursor-pointer">
                     <div class="flex flex-col items-center gap-3">
-                        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span class="text-3xl">📂</span>
+                        <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center icon-float">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-blue-600"></i>
                         </div>
-                        <p class="text-gray-700 font-medium">ファイルをドラッグ＆ドロップ</p>
+                        <p class="text-gray-700 font-medium text-lg">ファイルをドラッグ＆ドロップ</p>
                         <p class="text-gray-500 text-sm">o haz clic para seleccionar</p>
-                        <p class="text-xs text-gray-400 mt-2">Formatos: .xlsm, .xlsx, .xls</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="badge bg-green-100 text-green-700 text-xs">.xlsm</span>
+                            <span class="badge bg-blue-100 text-blue-700 text-xs">.xlsx</span>
+                            <span class="badge bg-purple-100 text-purple-700 text-xs">.xls</span>
+                        </div>
                     </div>
                     <input type="file" id="fileInput" multiple accept=".xlsm,.xlsx,.xls" class="hidden">
                 </div>
 
                 <!-- Barra de Progreso Detallada -->
                 <div id="progressSection" class="mt-4 hidden">
-                    <div class="bg-gray-100 rounded-lg p-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-medium text-gray-700" id="progressTitle">Procesando...</span>
-                            <span class="text-sm text-gray-500" id="progressPercent">0%</span>
+                    <div class="terminal-modern overflow-hidden">
+                        <!-- Terminal Header -->
+                        <div class="terminal-header">
+                            <div class="terminal-dot red"></div>
+                            <div class="terminal-dot yellow"></div>
+                            <div class="terminal-dot green"></div>
+                            <span class="text-gray-400 text-xs ml-3 font-mono">chingin-processor v4.0</span>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                            <div id="progressBar" class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
-                        </div>
-                        <div class="mt-2 text-xs text-gray-500" id="progressDetails">
-                            <!-- Detalles del progreso -->
-                        </div>
-                        <div id="progressLog" class="mt-3 max-h-64 overflow-y-auto text-xs font-mono bg-black text-green-400 rounded-lg p-3 border border-gray-700 hidden" style="font-family: 'Consolas', 'Monaco', 'Courier New', monospace;">
-                            <div class="text-gray-500 mb-1">$ chingin-processor --upload</div>
-                            <!-- Log de procesamiento tipo terminal -->
+                        <div class="p-4">
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-sm font-medium text-gray-200" id="progressTitle">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Procesando...
+                                </span>
+                                <span class="text-sm text-cyan-400 font-mono" id="progressPercent">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
+                                <div id="progressBar" class="progress-bar-animated h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-400" id="progressDetails">
+                                <!-- Detalles del progreso -->
+                            </div>
+                            <div id="progressLog" class="mt-3 max-h-64 overflow-y-auto text-xs font-mono text-green-400 hidden" style="font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;">
+                                <div class="text-gray-500 mb-1">$ chingin-processor --upload</div>
+                                <!-- Log de procesamiento tipo terminal -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -115,49 +404,79 @@
 
             <!-- Stats Cards -->
             <div class="grid grid-cols-4 gap-4">
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <p class="text-sm text-gray-500">Empleados</p>
-                    <p id="statEmployees" class="text-2xl font-bold text-blue-600">0</p>
+                <div class="stat-card blue">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Empleados</p>
+                            <p id="statEmployees" class="text-2xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <p class="text-sm text-gray-500">Registros</p>
-                    <p id="statRecords" class="text-2xl font-bold text-green-600">0</p>
+                <div class="stat-card green">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-file-invoice text-green-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Registros</p>
+                            <p id="statRecords" class="text-2xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <p class="text-sm text-gray-500">Periodos</p>
-                    <p id="statPeriods" class="text-2xl font-bold text-purple-600">0</p>
+                <div class="stat-card purple">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-calendar-alt text-purple-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Periodos</p>
+                            <p id="statPeriods" class="text-2xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <p class="text-sm text-gray-500">Total Neto</p>
-                    <p id="statNetPay" class="text-2xl font-bold text-orange-600">¥0</p>
+                <div class="stat-card orange">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-yen-sign text-orange-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Total Neto</p>
+                            <p id="statNetPay" class="text-2xl font-bold text-gray-800">¥0</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- Tab: Data -->
         <section id="section-data" class="tab-content hidden">
-            <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="card-elevated p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold">📊 Datos de Nómina</h2>
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <i class="fas fa-table text-blue-600"></i> Datos de Nómina
+                    </h2>
                     <div class="flex gap-2">
-                        <button onclick="clearAllData()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">
-                            🗑️ Borrar Todo
+                        <button onclick="clearAllData()" class="btn-primary btn-danger ripple px-4 py-2 text-sm">
+                            <i class="fas fa-trash-alt mr-2"></i>Borrar Todo
                         </button>
-                        <button onclick="loadData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-                            🔄 Actualizar
+                        <button onclick="loadData()" class="btn-primary ripple px-4 py-2 text-sm">
+                            <i class="fas fa-sync-alt mr-2"></i>Actualizar
                         </button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-100">
+                    <table class="w-full text-sm table-modern">
+                        <thead>
                             <tr>
-                                <th class="px-3 py-2 text-left">従業員番号</th>
-                                <th class="px-3 py-2 text-left">氏名</th>
-                                <th class="px-3 py-2 text-left">支給分</th>
-                                <th class="px-3 py-2 text-right">総支給額</th>
-                                <th class="px-3 py-2 text-right">控除合計</th>
-                                <th class="px-3 py-2 text-right">差引支給額</th>
+                                <th class="px-3 py-3 text-left">従業員番号</th>
+                                <th class="px-3 py-3 text-left">氏名</th>
+                                <th class="px-3 py-3 text-left">支給分</th>
+                                <th class="px-3 py-3 text-right">総支給額</th>
+                                <th class="px-3 py-3 text-right">控除合計</th>
+                                <th class="px-3 py-3 text-right">差引支給額</th>
                             </tr>
                         </thead>
                         <tbody id="dataTable"></tbody>
@@ -169,36 +488,36 @@
         <!-- Tab: Export -->
         <section id="section-export" class="tab-content hidden">
             <div class="grid grid-cols-3 gap-6">
-                <div class="bg-white rounded-xl shadow-sm p-6 text-center">
-                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span class="text-3xl">📥</span>
+                <div class="card-elevated p-6 text-center">
+                    <div class="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-4 icon-float">
+                        <i class="fas fa-file-excel text-green-600 text-2xl"></i>
                     </div>
                     <h3 class="font-semibold mb-2">ALL出力</h3>
                     <p class="text-sm text-gray-500 mb-4">Todos los datos consolidados</p>
-                    <button onclick="exportAll()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-                        Descargar Excel
+                    <button onclick="exportAll()" class="btn-primary btn-success ripple w-full">
+                        <i class="fas fa-download mr-2"></i>Descargar Excel
                     </button>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm p-6 text-center">
-                    <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span class="text-3xl">📅</span>
+                <div class="card-elevated p-6 text-center">
+                    <div class="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center mx-auto mb-4 icon-float">
+                        <i class="fas fa-calendar-week text-purple-600 text-2xl"></i>
                     </div>
                     <h3 class="font-semibold mb-2">月別分割</h3>
                     <p class="text-sm text-gray-500 mb-4">Hojas separadas por mes</p>
-                    <button onclick="exportMonthly()" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
-                        Descargar Excel
+                    <button onclick="exportMonthly()" class="btn-primary btn-purple ripple w-full">
+                        <i class="fas fa-download mr-2"></i>Descargar Excel
                     </button>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm p-6 text-center">
-                    <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span class="text-3xl">📄</span>
+                <div class="card-elevated p-6 text-center">
+                    <div class="w-16 h-16 bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl flex items-center justify-center mx-auto mb-4 icon-float">
+                        <i class="fas fa-file-archive text-orange-600 text-2xl"></i>
                     </div>
                     <h3 class="font-semibold mb-2">賃金台帳</h3>
                     <p class="text-sm text-gray-500 mb-4">Un archivo por empleado</p>
-                    <button onclick="exportChingin()" class="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700">
-                        Descargar ZIP
+                    <button onclick="exportChingin()" class="btn-primary btn-orange ripple w-full">
+                        <i class="fas fa-download mr-2"></i>Descargar ZIP
                     </button>
                 </div>
             </div>
@@ -207,48 +526,58 @@
         <!-- Tab: Backup -->
         <section id="section-backup" class="tab-content hidden">
             <div class="grid grid-cols-2 gap-6">
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-lg font-semibold mb-4">💾 Crear Backup</h2>
+                <div class="card-elevated p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i class="fas fa-hdd text-blue-600"></i> Crear Backup
+                    </h2>
                     <p class="text-sm text-gray-500 mb-4">Guarda una copia de la base de datos con verificación SHA256</p>
-                    <button onclick="createBackup()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-                        Crear Backup Ahora
+                    <button onclick="createBackup()" class="btn-primary ripple">
+                        <i class="fas fa-save mr-2"></i>Crear Backup Ahora
                     </button>
                     <div id="backupResult" class="mt-4"></div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-lg font-semibold mb-4">📋 Backups Disponibles</h2>
+                <div class="card-elevated p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i class="fas fa-history text-purple-600"></i> Backups Disponibles
+                    </h2>
                     <div id="backupsList" class="space-y-2 max-h-64 overflow-y-auto"></div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
-                <h2 class="text-lg font-semibold mb-4">🔐 Integridad de Base de Datos</h2>
+            <div class="card-elevated p-6 mt-6">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i class="fas fa-shield-alt text-green-600"></i> Integridad de Base de Datos
+                </h2>
                 <div class="flex items-center gap-4">
                     <span class="text-sm text-gray-500">Hash SHA256:</span>
                     <code id="dbHash" class="bg-gray-100 px-3 py-1 rounded text-sm font-mono">-</code>
-                    <button onclick="loadStats()" class="text-blue-600 text-sm hover:underline">Verificar</button>
+                    <button onclick="loadStats()" class="btn-primary ripple px-4 py-2 text-sm">
+                        <i class="fas fa-check-circle mr-2"></i>Verificar
+                    </button>
                 </div>
             </div>
         </section>
 
         <!-- Tab: Audit -->
         <section id="section-audit" class="tab-content hidden">
-            <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="card-elevated p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold">📋 Log de Auditoría</h2>
-                    <button onclick="loadAudit()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-                        🔄 Actualizar
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <i class="fas fa-clipboard-list text-indigo-600"></i> Log de Auditoría
+                    </h2>
+                    <button onclick="loadAudit()" class="btn-primary ripple px-4 py-2 text-sm">
+                        <i class="fas fa-sync-alt mr-2"></i>Actualizar
                     </button>
                 </div>
                 <div class="overflow-x-auto max-h-96">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-100 sticky top-0">
+                    <table class="w-full text-sm table-modern">
+                        <thead class="sticky top-0">
                             <tr>
-                                <th class="px-3 py-2 text-left">Fecha/Hora</th>
-                                <th class="px-3 py-2 text-left">Acción</th>
-                                <th class="px-3 py-2 text-left">Tabla</th>
-                                <th class="px-3 py-2 text-left">Detalles</th>
+                                <th class="px-3 py-3 text-left">Fecha/Hora</th>
+                                <th class="px-3 py-3 text-left">Acción</th>
+                                <th class="px-3 py-3 text-left">Tabla</th>
+                                <th class="px-3 py-3 text-left">Detalles</th>
                             </tr>
                         </thead>
                         <tbody id="auditTable"></tbody>
@@ -259,14 +588,18 @@
 
         <!-- Tab: Settings -->
         <section id="section-settings" class="tab-content hidden">
-            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h2 class="text-lg font-semibold mb-4">⚙️ Configuración</h2>
+            <div class="card-elevated p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i class="fas fa-cog text-gray-600"></i> Configuración
+                </h2>
                 <div id="settingsList" class="space-y-4"></div>
             </div>
             
             <!-- Selector de Tema -->
-            <div class="bg-white rounded-xl shadow-sm p-6">
-                <h2 class="text-lg font-semibold mb-4">🎨 Tema de Interfaz</h2>
+            <div class="card-elevated p-6">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i class="fas fa-palette text-pink-600"></i> Tema de Interfaz
+                </h2>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="border rounded-lg p-4 bg-blue-50 border-blue-200">
                         <div class="flex items-center mb-2">
@@ -294,8 +627,10 @@
             </div>
             
             <!-- Sincronización de Empleados -->
-            <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
-                <h2 class="text-lg font-semibold mb-4">🔄 社員マスター同期</h2>
+            <div class="card-elevated p-6 mt-6">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i class="fas fa-sync text-cyan-600"></i> 社員マスター同期
+                </h2>
                 <p class="text-sm text-gray-600 mb-4">
                     Sincronizar datos de empleados desde el archivo maestro en la red:<br>
                     <code class="bg-gray-100 px-2 py-1 rounded text-xs">\\UNS-Kikaku\共有フォルダ\SCTDateBase\【新】社員台帳(UNS)T</code>
@@ -318,14 +653,14 @@
                 </div>
                 
                 <div class="flex gap-3">
-                    <button onclick="syncAllEmployees()" id="syncAllBtn" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center gap-2">
-                        <span>🔄</span> 全員同期 (派遣 + 請負)
+                    <button onclick="syncAllEmployees()" id="syncAllBtn" class="btn-primary btn-purple ripple px-6 py-3 flex items-center gap-2">
+                        <i class="fas fa-sync-alt"></i> 全員同期 (派遣 + 請負)
                     </button>
-                    <button onclick="syncHakenOnly()" class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 text-sm">
-                        派遣のみ
+                    <button onclick="syncHakenOnly()" class="btn-primary ripple px-4 py-3 text-sm">
+                        <i class="fas fa-user-tie mr-1"></i>派遣のみ
                     </button>
-                    <button onclick="syncUkeoiOnly()" class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 text-sm">
-                        請負のみ
+                    <button onclick="syncUkeoiOnly()" class="btn-primary btn-success ripple px-4 py-3 text-sm">
+                        <i class="fas fa-hard-hat mr-1"></i>請負のみ
                     </button>
                 </div>
                 
@@ -335,14 +670,18 @@
 
         <!-- Tab: Chingin (賃金台帳 por empleado) -->
         <section id="section-chingin" class="tab-content hidden">
-            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h2 class="text-lg font-semibold mb-4">📄 賃金台帳 - Generar por Empleado o Fábrica</h2>
+            <div class="card-elevated p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i class="fas fa-file-invoice-dollar text-amber-600"></i> 賃金台帳 - Generar por Empleado o Fábrica
+                </h2>
                 
                 <!-- Navegación por Fábrica/Empresa -->
                 <div class="grid grid-cols-2 gap-6 mb-6">
                     <!-- 派遣社員 - Por Fábrica -->
-                    <div class="border rounded-lg p-4 bg-blue-50">
-                        <h3 class="font-medium text-blue-800 mb-3">🏭 派遣社員 - Por Fábrica</h3>
+                    <div class="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                        <h3 class="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                            <i class="fas fa-industry text-blue-600"></i> 派遣社員 - Por Fábrica
+                        </h3>
                         <div class="space-y-3">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">派遣先 (Fábrica)</label>
@@ -370,8 +709,10 @@
                     </div>
                     
                     <!-- 請負社員 - 岡山工場 (Todos) -->
-                    <div class="border rounded-lg p-4 bg-green-50">
-                        <h3 class="font-medium text-green-800 mb-3">🔧 請負社員 - 岡山工場</h3>
+                    <div class="border rounded-lg p-4 bg-green-50 border-green-200">
+                        <h3 class="font-medium text-green-800 mb-3 flex items-center gap-2">
+                            <i class="fas fa-hard-hat text-green-600"></i> 請負社員 - 岡山工場
+                        </h3>
                         <div class="space-y-3">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">従業員 (Individual)</label>
@@ -409,8 +750,8 @@
                                 <option value="2023">2023</option>
                             </select>
                         </div>
-                        <button onclick="searchEmployee()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-                            🔍 検索 Buscar
+                        <button onclick="searchEmployee()" class="btn-primary ripple px-6 py-2">
+                            <i class="fas fa-search mr-2"></i>検索 Buscar
                         </button>
                     </div>
                 </div>
@@ -418,7 +759,7 @@
 
             <!-- Resultado de búsqueda -->
             <div id="employeeResult" class="hidden">
-                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="card-elevated p-6 mb-6">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h3 class="text-xl font-bold" id="empName">-</h3>
@@ -465,19 +806,21 @@
                     </div>
 
                     <div class="flex gap-4">
-                        <button onclick="generateChingin()" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold">
-                            📥 賃金台帳をダウンロード
+                        <button onclick="generateChingin()" class="flex-1 btn-primary btn-success ripple py-3 font-semibold">
+                            <i class="fas fa-download mr-2"></i>賃金台帳をダウンロード
                         </button>
-                        <button onclick="previewChingin()" class="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 font-semibold">
-                            👁️ プレビュー Preview
+                        <button onclick="previewChingin()" class="flex-1 btn-primary btn-purple ripple py-3 font-semibold">
+                            <i class="fas fa-eye mr-2"></i>プレビュー Preview
                         </button>
                     </div>
                 </div>
 
                 <!-- Vista previa de datos -->
                 <div id="previewSection" class="hidden">
-                    <div class="bg-white rounded-xl shadow-sm p-6">
-                        <h3 class="text-lg font-semibold mb-4">📊 Vista Previa de Datos</h3>
+                    <div class="card-elevated p-6">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-bar text-blue-600"></i> Vista Previa de Datos
+                        </h3>
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead class="bg-gray-100">
@@ -516,13 +859,16 @@
             <!-- No encontrado -->
             <div id="employeeNotFound" class="hidden">
                 <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                    <span class="text-4xl">😕</span>
+                    <i class="fas fa-user-slash text-4xl text-red-400"></i>
                     <p class="text-red-700 font-medium mt-2">従業員が見つかりません</p>
                     <p class="text-red-500 text-sm">El empleado no fue encontrado en la base de datos</p>
                 </div>
             </div>
         </section>
     </main>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-3"></div>
 
     <script>
         // Simple cache system para evitar requests duplicados
@@ -1511,9 +1857,59 @@
             }
         }
 
+        // ========================================
+        // TOAST NOTIFICATIONS
+        // ========================================
+
+        function showToast(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-times-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+
+            const colors = {
+                success: 'bg-gradient-to-r from-green-500 to-green-600',
+                error: 'bg-gradient-to-r from-red-500 to-red-600',
+                warning: 'bg-gradient-to-r from-yellow-500 to-yellow-600',
+                info: 'bg-gradient-to-r from-blue-500 to-blue-600'
+            };
+
+            toast.className = `${colors[type]} text-white px-5 py-4 rounded-xl shadow-lg flex items-center gap-3 transform translate-x-full opacity-0 transition-all duration-300`;
+            toast.innerHTML = `
+                <i class="fas ${icons[type]} text-xl"></i>
+                <span class="font-medium">${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-auto opacity-70 hover:opacity-100">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Trigger animation
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            });
+
+            // Auto remove
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
         // Init
         loadStats();
         loadEmployeeStats();
+
+        // Welcome toast (opcional)
+        setTimeout(() => {
+            showToast('賃金台帳 Generator v4 PRO - Ready!', 'success', 3000);
+        }, 500);
     </script>
 </body>
 </html>
