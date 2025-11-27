@@ -132,9 +132,16 @@ async def home(request: Request):
     else:
         stats = get_statistics()
     
-    # Detectar si se solicita UI clásica
+    # Detectar si se solicita UI clásica o moderna mejorada
     ui_theme = request.query_params.get("theme", "moderno")
-    template_name = "index.html" if ui_theme == "clasico" else "index_moderno.html"
+    enhanced_ui = request.query_params.get("enhanced", "false")
+    
+    if ui_theme == "clasico":
+        template_name = "index.html"
+    elif enhanced_ui == "true" or ui_theme == "moderno_v2":
+        template_name = "index_moderno_v2.html"
+    else:
+        template_name = "index_moderno.html"
     
     return templates.TemplateResponse(template_name, {
         "request": request,
@@ -1231,4 +1238,6 @@ if __name__ == "__main__":
         )
     else:
         # Estamos corriendo como script normal
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        # Usar variable de entorno PORT si está disponible, sino 8000
+        port = int(os.environ.get('PORT', 8000))
+        uvicorn.run(app, host="0.0.0.0", port=port)
