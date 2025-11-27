@@ -245,6 +245,144 @@
             color: #f7fafc !important;
             background-color: rgba(0, 0, 0, 0.6) !important;
         }
+
+        /* ===== FIX COMPLETO PARA FORMULARIOS EN AMBOS MODOS ===== */
+
+        /* Light Theme - Formularios */
+        .light-theme select,
+        .light-theme input[type="text"] {
+            color: #1a202c !important;
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            border-color: rgba(59, 130, 246, 0.3) !important;
+        }
+
+        .light-theme select:focus,
+        .light-theme input[type="text"]:focus {
+            background-color: #ffffff !important;
+            border-color: #3b82f6 !important;
+        }
+
+        .light-theme input::placeholder {
+            color: #718096 !important;
+        }
+
+        /* Dark Theme - Formularios */
+        .dark-theme select,
+        .dark-theme input[type="text"] {
+            color: #f7fafc !important;
+            background-color: rgba(26, 26, 46, 0.9) !important;
+            border-color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        .dark-theme select:focus,
+        .dark-theme input[type="text"]:focus {
+            background-color: rgba(26, 26, 46, 1) !important;
+            border-color: #3b82f6 !important;
+        }
+
+        .dark-theme input::placeholder {
+            color: #a0aec0 !important;
+        }
+
+        /* Labels con visibilidad mejorada */
+        .light-theme label {
+            color: #1a202c;
+        }
+
+        .dark-theme label {
+            color: #f7fafc;
+        }
+
+        /* Tablas con mejor visibilidad */
+        .light-theme table th {
+            color: #1a202c;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .light-theme table td {
+            color: #2d3748;
+        }
+
+        .dark-theme table th {
+            color: #f7fafc;
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+
+        .dark-theme table td {
+            color: #e2e8f0;
+        }
+
+        /* Títulos y textos en secciones */
+        .light-theme h2, .light-theme h3 {
+            color: #1a202c;
+        }
+
+        .dark-theme h2, .dark-theme h3 {
+            color: #f7fafc;
+        }
+
+        /* Textos descriptivos */
+        .light-theme .text-white\/70,
+        .light-theme .text-white\/80 {
+            color: #4a5568 !important;
+        }
+
+        .dark-theme .text-white\/70,
+        .dark-theme .text-white\/80 {
+            color: #cbd5e0 !important;
+        }
+
+        /* Botones de navegación (tabs) */
+        .light-theme nav button:not(.tab-active) {
+            color: #2d3748;
+        }
+
+        .light-theme nav button:not(.tab-active):hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            color: #1a202c;
+        }
+
+        .dark-theme nav button:not(.tab-active) {
+            color: #cbd5e0;
+        }
+
+        .dark-theme nav button:not(.tab-active):hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #f7fafc;
+        }
+
+        /* Fix iconos en header */
+        .light-theme header .text-white {
+            color: #ffffff !important;
+        }
+
+        /* Zona de drop con mejor visibilidad */
+        .light-theme #dropZone {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-color: rgba(59, 130, 246, 0.5) !important;
+        }
+
+        .light-theme #dropZone p {
+            color: #1a202c !important;
+        }
+
+        .dark-theme #dropZone {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        .dark-theme #dropZone p {
+            color: #f7fafc !important;
+        }
+
+        /* Progress section */
+        .light-theme #progressSection .text-white {
+            color: #1a202c !important;
+        }
+
+        .dark-theme #progressSection .text-white {
+            color: #f7fafc !important;
+        }
     </style>
 </head>
 <body class="min-h-screen light-theme">
