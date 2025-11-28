@@ -828,13 +828,22 @@
         </section>
 
         <section id="section-settings" class="tab-content hidden">
-            <div class="glass-morphism rounded-2xl p-8 text-center">
-                <i class="fas fa-cog text-6xl text-blue-400 mb-6 pulse"></i>
-                <h2 class="text-2xl font-bold text-white mb-4">Settings</h2>
-                <p class="text-white/70 mb-6">Configuración del sistema</p>
-                <button onclick="loadSettings()" class="bg-gradient-to-r from-blue-500 to-blue-700 text-white py-4 px-8 rounded-xl font-semibold hover:shadow-lg transition-all duration-300">
-                    <i class="fas fa-sliders-h mr-2"></i>Abrir Configuración
-                </button>
+            <div class="glass-morphism rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                    <i class="fas fa-cog text-blue-400"></i>
+                    Configuración del Sistema
+                </h2>
+
+                <div id="settingsList" class="space-y-4">
+                    <!-- Settings will be loaded here -->
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button type="button" onclick="loadSettings()" class="bg-gradient-to-r from-blue-500 to-blue-700 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center gap-2">
+                        <i class="fas fa-sync-alt"></i>
+                        Recargar Configuración
+                    </button>
+                </div>
             </div>
         </section>
     </main>
@@ -1176,9 +1185,41 @@
             // Implementation would go here
         }
 
-        function loadSettings() {
-            showNotification('⚙️ Cargando configuración...', 'info');
-            // Implementation would go here
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const settings = await response.json();
+
+                const settingsList = document.getElementById('settingsList');
+                settingsList.innerHTML = Object.entries(settings).map(([key, data]) => `
+                    <div class="glass-morphism rounded-xl p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <p class="text-white font-semibold mb-1">${key}</p>
+                                <p class="text-white/70 text-sm">${data.description || 'Sin descripción'}</p>
+                            </div>
+                            <input type="text" value="${data.value}"
+                                   onchange="updateSetting('${key}', this.value)"
+                                   class="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 w-48 ml-4">
+                        </div>
+                    </div>
+                `).join('');
+
+                showNotification('✅ Configuración cargada', 'success');
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showNotification('Error al cargar configuración', 'error');
+            }
+        }
+
+        async function updateSetting(key, value) {
+            try {
+                await fetch(`/api/settings/${key}?value=${encodeURIComponent(value)}`, { method: 'POST' });
+                showNotification(`✅ Configuración "${key}" actualizada`, 'success');
+            } catch (error) {
+                console.error('Error updating setting:', error);
+                showNotification('Error al actualizar configuración', 'error');
+            }
         }
 
         // Initialize
