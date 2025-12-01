@@ -264,7 +264,7 @@ def get_statistics_cached() -> Dict[str, Any]:
             total_net_pay = cursor.fetchone()[0] or 0
             
             # Obtener hash de BD
-            cursor.execute("SELECT hash FROM backups WHERE is_valid = 1 ORDER BY created_at DESC LIMIT 1")
+            cursor.execute("SELECT file_hash FROM backups WHERE is_valid = 1 ORDER BY created_at DESC LIMIT 1")
             db_hash = cursor.fetchone()
             db_hash = db_hash[0] if db_hash else ""
             
